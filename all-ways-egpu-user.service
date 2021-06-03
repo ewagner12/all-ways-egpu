@@ -1,0 +1,10 @@
+[Unit]
+Description=Re-enable iGPU after starting eGPU as primary under Wayland desktops
+After=user@1000.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/all-ways-egpu reenable
+
+[Install]
+WantedBy=user@1000.service

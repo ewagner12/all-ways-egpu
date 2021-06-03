@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=All-Ways-eGPU-reenable
+GenericName=eGPU-reenabler
+Comment=Re-enables iGPU after setting eGPU as primary for Wayland desktops
+Exec=systemctl start all-ways-egpu-user.service
+Terminal=false
+Type=Application
+Version=0.1
+Categories=System;Settings;Utility;
+Keywords=system;hardware;
+

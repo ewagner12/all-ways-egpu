@@ -1,0 +1,162 @@
+#!/usr/bin/env sh
+
+#Todo: documentation, testing, automated call to reenable after login
+
+USER_IDS_DIR=/usr/share/all-ways-egpu
+
+irUpdate() {
+	IR_TOOLS_PATH=/etc/initramfs-tools
+	MKINIT_PATH=/etc/mkinitcpio.conf
+	DRACUT_PATH=/etc/dracut.conf.d
+
+	if [ -e "$IR_TOOLS_PATH" ]; then
+		if [ "$(! grep -q pci-stub < $IR_TOOLS_PATH/modules)" ]; then
+			echo "pci-stub" | tee -a $IR_TOOLS_PATH/modules
+		fi
+		update-initramfs -u -k "all"
+	else
+		if [ -e "$MKINIT_PATH" ]; then
+			#still testing
+			if [ "$(! grep -q pci-stub < $MKINIT_PATH)" ]; then
+				echo "MODULES=(pci-stub)" | tee -a $MKINIT_PATH
+			fi
+			mkinitcpio -P
+		else
+			if [ -e "$DRACUT_PATH" ]; then
+				#still testing
+				if [ "$(! cat $DRACUT_PATH/*.conf | grep -q pci-stub)" ]; then
+					echo 'add_drivers+=" pci-stub "' | tee -a $DRACUT_PATH/all-ways-egpu.conf
+				fi
+				dracut --force
+			else
+				echo "Initramfs could not be configured. Supported tools: initramfs-tools, mkinitcpio, dracut"
+				exit
+			fi
+		fi
+	fi
+}
+
+setupConfig() {
+	if [ -e $USER_IDS_DIR/user-dev-ids ]; then
+		echo "Existing configuration file detected, would you like to overwrite it? [y/N]"
+		read -r OW_RES
+		if [ "$OW_RES" = "y" ]; then
+			rm -f $USER_IDS_DIR/user-dev-ids
+			rm -f $USER_IDS_DIR/user-bus-ids
+		else
+			echo "Existing configuration not changed, exiting setup."
+			return
+		fi
+	fi
+
+	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU and internal sound devices at boot:\n"
+
+	echo "$(lspci -d ::0300 -n && lspci -d ::0302 -n && lspci -d ::0403 -n)" > $USER_IDS_DIR/user-temp-ids
+	
+	while read -r CARDS <&3; do
+		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
+		DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
+		DEV_DRIVERS=$(lspci -k | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
+		lspci | grep "$PCI_BUS"
+		printf "Would you like to disable this device during boot [y/N]\n"
+		read -r DIS_RES
+
+		if [ "$DIS_RES" = "y" ]; then
+			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> $USER_IDS_DIR/user-bus-ids
+			printf '%s,' "$DEV_IDS" >> $USER_IDS_DIR/user-dev-ids
+		else
+			echo "Not disabling ""$PCI_BUS"
+		fi
+	done 3<$USER_IDS_DIR/user-temp-ids
+	sed -i 's/\(.*\),/\1\n/' $USER_IDS_DIR/user-dev-ids
+	rm -f $USER_IDS_DIR/user-temp-ids
+}
+
+configBind() {
+	if [ ! -e $USER_IDS_DIR/user-dev-ids ]; then
+		echo "Error: No configuration file. Please run setup."
+		exit
+	fi
+	#overwrites /lib/modprobe.d/pci-stub.conf if it exists
+	DEV_IDS=$(cat $USER_IDS_DIR/user-dev-ids)
+	printf 'options pci-stub ids=%s\nsoftdep drm pre: pci-stub\n' "${DEV_IDS}" > /lib/modprobe.d/pci-stub.conf
+	irUpdate
+}
+
+unconfigBind() {
+	#removes /lib/modprobe.d/pci-stub.conf
+	rm -f /lib/modprobe.d/pci-stub.conf
+	irUpdate
+}
+
+unbind() {
+	if [ ! -e $USER_IDS_DIR/user-bus-ids ]; then
+		echo "Error: No configuration file. Please run setup."
+		exit
+	fi
+	PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
+	echo "$PCI_DEV" | while read -r LINE; do
+		BUS=$(echo "$LINE"  | awk '{ print $1 }')
+		DRIVER=$(echo "$LINE" | awk '{ print $2 }')
+		if find /sys/bus/pci/drivers/pci-stub | grep -q "$BUS"; then
+			echo "0000:""$BUS" > /sys/bus/pci/drivers/pci-stub/unbind
+			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/bind
+		fi
+	done
+}
+
+# check if the script is run as root
+if [ "$(whoami)" != "root" ]; then 
+    echo "You need to run the script with root privileges"
+    exit
+fi
+
+case $1 in
+	-h|help)
+    echo "Valid arguments are \"egpu\", \"internal\", \"boot\", \"reenable\" or \"setup\"."
+    echo "Example: sudo all-ways-egpu setup"
+    echo "Usage:"
+    echo "To force the eGPU as primary, run: sudo all-ways-egpu egpu"
+    echo "then restart with the eGPU connected."
+    echo "In this mode, the script should default back to iGPU on restart if no eGPU is connected."
+    echo "Thus, if this works for you, you can stay in eGPU mode. Otherwise, run: sudo all-ways-egpu internal before removing eGPU and restarting."
+    exit 0
+    	;;
+	setup)
+		setupConfig
+
+		echo "Attempt to re-enable these iGPU/initially disabled devices after boot (recommended)? [y/N]"
+		read -r EN_RES
+
+		if [ "$EN_RES" = "y" ]; then
+			systemctl enable all-ways-egpu.service
+			cp /usr/share/all-ways-egpu/all-ways-egpu-reenable.desktop /home/*/.config/autostart/
+		else
+			systemctl disable all-ways-egpu.service
+			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
+		fi
+		
+		echo "Configuration files sucessfully created. See help for usage information"
+		;;
+	egpu)
+		configBind
+		;;
+	internal)
+		unconfigBind
+		;;
+	boot)
+		if [ "$(find /dev/dri/card* | wc -l)" -lt 1 ]; then
+			unbind
+			systemctl restart display-manager.service
+		fi
+		;;
+	reenable)
+		unbind
+		;;
+	*)
+	echo "Unknown argument: ${1}."
+	echo "Valid arguments are \"egpu\", \"internal\", \"boot\", \"reenable\" or \"setup\"."
+	echo "Example: sudo all-ways-egpu setup"
+	exit 1
+    	;;
+esac
