@@ -8,21 +8,21 @@ irUpdate() {
 	DRACUT_PATH=/etc/dracut.conf.d
 
 	if [ -e "$IR_TOOLS_PATH" ]; then
-		if ! grep -q pci-stub < "$IR_TOOLS_PATH"/modules; then
-			echo "pci-stub" | tee -a $IR_TOOLS_PATH/modules
+		if ! grep -q vfio-pci < "$IR_TOOLS_PATH"/modules; then
+			echo "vfio-pci" | tee -a $IR_TOOLS_PATH/modules
 		fi
 		update-initramfs -u -k "all"
 	else
 		if [ -e "$MKINIT_PATH" ]; then
-			if ! grep -q pci-stub < "$MKINIT_PATH"; then
-				echo "MODULES=(pci-stub)" | tee -a "$MKINIT_PATH"
+			if ! grep -q vfio-pci < "$MKINIT_PATH"; then
+				echo 'MODULES+="vfio-pci"' | tee -a "$MKINIT_PATH"
 			fi
 			mkinitcpio -P
 		else
 			if [ -e "$DRACUT_PATH" ]; then
 				#still testing
-				if ! cat "$DRACUT_PATH"/*.conf | grep -q pci-stub; then
-					echo 'add_drivers+=" pci-stub "' | tee -a "$DRACUT_PATH"/all-ways-egpu.conf
+				if ! cat "$DRACUT_PATH"/*.conf | grep -q vfio-pci; then
+					echo 'add_drivers+=" vfio-pci "' | tee -a "$DRACUT_PATH"/all-ways-egpu.conf
 				fi
 				dracut --force
 			else
@@ -74,15 +74,15 @@ configBind() {
 		echo "Error: No configuration file. Please run setup."
 		exit
 	fi
-	#overwrites /lib/modprobe.d/pci-stub.conf if it exists
+	#overwrites /etc/modprobe.d/vfio.conf if it exists
 	DEV_IDS=$(cat $USER_IDS_DIR/user-dev-ids)
-	printf 'options pci-stub ids=%s\nsoftdep drm pre: pci-stub\n' "${DEV_IDS}" > /lib/modprobe.d/pci-stub.conf
+	printf 'options vfio-pci ids=%s\n' "${DEV_IDS}" > /etc/modprobe.d/vfio.conf
 	irUpdate
 }
 
 unconfigBind() {
-	#removes /lib/modprobe.d/pci-stub.conf
-	rm -f /lib/modprobe.d/pci-stub.conf
+	#removes /etc/modprobe.d/vfio.conf
+	rm -f /etc/modprobe.d/vfio.conf
 	irUpdate
 }
 
@@ -95,8 +95,8 @@ unbind() {
 	echo "$PCI_DEV" | while read -r LINE; do
 		BUS=$(echo "$LINE"  | awk '{ print $1 }')
 		DRIVER=$(echo "$LINE" | awk '{ print $2 }')
-		if find /sys/bus/pci/drivers/pci-stub | grep -q "$BUS"; then
-			echo "0000:""$BUS" > /sys/bus/pci/drivers/pci-stub/unbind
+		if find /sys/bus/pci/drivers/vfio-pci | grep -q "$BUS"; then
+			echo "0000:""$BUS" > /sys/bus/pci/drivers/vfio-pci/unbind
 			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/bind
 		fi
 	done
