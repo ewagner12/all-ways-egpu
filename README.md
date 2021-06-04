@@ -1,7 +1,7 @@
 # all-ways-egpu
 Configures eGPU as primary under Linux Wayland desktops.
 
-Note this script is not designed to replace existing solutions such as gswitch or egpu-switcher. If you have an Xorg based desktop, these solutions are still the best option and should be prefered over this script.
+Note this script is not designed to replace existing solutions such as [gswitch](https://github.com/karli-sjoberg/gswitch) or [egpu-switcher](https://github.com/hertg/egpu-switcher). If you have an Xorg based desktop, these solutions are still the best option and should be preferred over this script.
 
 ## Installation/Uninstallation:
 
