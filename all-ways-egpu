@@ -1,12 +1,10 @@
 #!/usr/bin/env sh
 
-#Todo: documentation, testing, automated call to reenable after login
-
 USER_IDS_DIR=/usr/share/all-ways-egpu
 
 irUpdate() {
 	IR_TOOLS_PATH=/etc/initramfs-tools
-	MKINIT_PATH=/etc/mkinitcpio.conf
+	MKINIT_PATH=/etc/mkinitcpio.d
 	DRACUT_PATH=/etc/dracut.conf.d
 
 	if [ -e "$IR_TOOLS_PATH" ]; then
@@ -16,16 +14,15 @@ irUpdate() {
 		update-initramfs -u -k "all"
 	else
 		if [ -e "$MKINIT_PATH" ]; then
-			#still testing
-			if [ "$(! grep -q pci-stub < $MKINIT_PATH)" ]; then
-				echo "MODULES=(pci-stub)" | tee -a $MKINIT_PATH
+			if [ ! -e "$MKINIT_PATH"/all-ways-egpu.conf ]; then
+				echo "MODULES=(pci-stub)" | tee -a "$MKINIT_PATH"/all-ways-egpu.conf
 			fi
 			mkinitcpio -P
 		else
 			if [ -e "$DRACUT_PATH" ]; then
 				#still testing
-				if [ "$(! cat $DRACUT_PATH/*.conf | grep -q pci-stub)" ]; then
-					echo 'add_drivers+=" pci-stub "' | tee -a $DRACUT_PATH/all-ways-egpu.conf
+				if [ "$(! cat "$DRACUT_PATH"/*.conf | grep -q pci-stub)" ]; then
+					echo 'add_drivers+=" pci-stub "' | tee -a "$DRACUT_PATH"/all-ways-egpu.conf
 				fi
 				dracut --force
 			else
