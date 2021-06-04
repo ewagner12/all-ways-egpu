@@ -4,24 +4,24 @@ USER_IDS_DIR=/usr/share/all-ways-egpu
 
 irUpdate() {
 	IR_TOOLS_PATH=/etc/initramfs-tools
-	MKINIT_PATH=/etc/mkinitcpio.d
+	MKINIT_PATH=/etc/mkinitcpio.conf
 	DRACUT_PATH=/etc/dracut.conf.d
 
 	if [ -e "$IR_TOOLS_PATH" ]; then
-		if [ "$(! grep -q pci-stub < $IR_TOOLS_PATH/modules)" ]; then
+		if ! grep -q pci-stub < "$IR_TOOLS_PATH"/modules; then
 			echo "pci-stub" | tee -a $IR_TOOLS_PATH/modules
 		fi
 		update-initramfs -u -k "all"
 	else
 		if [ -e "$MKINIT_PATH" ]; then
-			if [ ! -e "$MKINIT_PATH"/all-ways-egpu.conf ]; then
-				echo "MODULES=(pci-stub)" | tee -a "$MKINIT_PATH"/all-ways-egpu.conf
+			if ! grep -q pci-stub < "$MKINIT_PATH"; then
+				echo "MODULES=(pci-stub)" | tee -a "$MKINIT_PATH"
 			fi
 			mkinitcpio -P
 		else
 			if [ -e "$DRACUT_PATH" ]; then
 				#still testing
-				if [ "$(! cat "$DRACUT_PATH"/*.conf | grep -q pci-stub)" ]; then
+				if ! cat "$DRACUT_PATH"/*.conf | grep -q pci-stub; then
 					echo 'add_drivers+=" pci-stub "' | tee -a "$DRACUT_PATH"/all-ways-egpu.conf
 				fi
 				dracut --force
