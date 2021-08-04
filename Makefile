@@ -14,7 +14,7 @@ install:
 	cp all-ways-egpu-reenable.desktop ${DESTDIR}/usr/share/all-ways-egpu
 
 uninstall:
-	${DESTDIR}${BINDIR}/all-ways-egpu internal
+	${DESTDIR}${BINDIR}/all-ways-egpu configure internal
 	systemctl disable all-ways-egpu.service
 	rm -f ${DESTDIR}${BINDIR}/all-ways-egpu
 	rm -f ${DESTDIR}${SYSDIR}/all-ways-egpu.service

@@ -2,37 +2,6 @@
 
 USER_IDS_DIR=/usr/share/all-ways-egpu
 
-irUpdate() {
-	IR_TOOLS_PATH=/etc/initramfs-tools
-	MKINIT_PATH=/etc/mkinitcpio.conf
-	DRACUT_PATH=/etc/dracut.conf.d
-
-	if [ -e "$IR_TOOLS_PATH" ]; then
-		if ! grep -q vfio-pci < "$IR_TOOLS_PATH"/modules; then
-			echo "vfio-pci" | tee -a $IR_TOOLS_PATH/modules
-		fi
-		update-initramfs -u -k "all"
-	else
-		if [ -e "$MKINIT_PATH" ]; then
-			if ! grep -q vfio-pci < "$MKINIT_PATH"; then
-				echo 'MODULES+="vfio-pci"' | tee -a "$MKINIT_PATH"
-			fi
-			mkinitcpio -P
-		else
-			if [ -e "$DRACUT_PATH" ]; then
-				#still testing
-				if ! cat "$DRACUT_PATH"/*.conf | grep -q vfio-pci; then
-					echo 'add_drivers+=" vfio-pci "' | tee -a "$DRACUT_PATH"/all-ways-egpu.conf
-				fi
-				dracut --force
-			else
-				echo "Initramfs could not be configured. Supported tools: initramfs-tools, mkinitcpio, dracut"
-				exit
-			fi
-		fi
-	fi
-}
-
 setupConfig() {
 	if [ -e $USER_IDS_DIR/user-dev-ids ]; then
 		echo "Existing configuration file detected, would you like to overwrite it? [y/N]"
@@ -48,8 +17,12 @@ setupConfig() {
 
 	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU and internal sound devices at boot:\n"
 
-	echo "$(lspci -d ::0300 -n && lspci -d ::0302 -n && lspci -d ::0403 -n)" > $USER_IDS_DIR/user-temp-ids
-	
+	if [ "${1}" -eq 1 ]; then
+		echo "$(lspci -n)" > $USER_IDS_DIR/user-temp-ids
+	else
+		echo "$(lspci -d ::0300 -n && lspci -d ::0302 -n && lspci -d ::0403 -n)" > $USER_IDS_DIR/user-temp-ids
+	fi
+
 	while read -r CARDS <&3; do
 		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
 		DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
@@ -69,91 +42,132 @@ setupConfig() {
 	rm -f $USER_IDS_DIR/user-temp-ids
 }
 
-configBind() {
-	if [ ! -e $USER_IDS_DIR/user-dev-ids ]; then
-		echo "Error: No configuration file. Please run setup."
-		exit
-	fi
-	#overwrites /etc/modprobe.d/vfio.conf if it exists
-	DEV_IDS=$(cat $USER_IDS_DIR/user-dev-ids)
-	printf 'options vfio-pci ids=%s\n' "${DEV_IDS}" > /etc/modprobe.d/vfio.conf
-	irUpdate
-}
-
-unconfigBind() {
-	#removes /etc/modprobe.d/vfio.conf
-	rm -f /etc/modprobe.d/vfio.conf
-	irUpdate
-}
-
-unbind() {
+removeInternal() {
 	if [ ! -e $USER_IDS_DIR/user-bus-ids ]; then
 		echo "Error: No configuration file. Please run setup."
 		exit
 	fi
-	PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
-	echo "$PCI_DEV" | while read -r LINE; do
-		BUS=$(echo "$LINE"  | awk '{ print $1 }')
-		DRIVER=$(echo "$LINE" | awk '{ print $2 }')
-		if find /sys/bus/pci/drivers/vfio-pci | grep -q "$BUS"; then
-			echo "0000:""$BUS" > /sys/bus/pci/drivers/vfio-pci/unbind
-			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/bind
-		fi
-	done
+
+	( trap '' HUP TERM
+		while [ "$(systemctl status display-manager | awk '/Active:/{print$2}')" \
+			= "active" ]; do
+			sleep 1
+		done
+
+		set -- /sys/class/vtconsole/vtcon*/bind
+		for VT in "$@"; do
+			echo 0 > "$VT"
+		done
+
+		PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
+		echo "$PCI_DEV" | while read -r LINE; do
+			BUS=$(echo "$LINE"  | awk '{ print $1 }')
+			DRIVER=$(echo "$LINE" | awk '{ print $2 }')
+
+			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/unbind
+			echo 1 > /sys/bus/pci/devices/0000:"$BUS"/remove
+		done
+		set -- /sys/class/vtconsole/vtcon*/bind
+		for VT in "$@"; do
+			echo 1 > "$VT"
+		done
+		sleep 1
+		systemctl start display-manager.service ) &
+	systemctl stop display-manager.service
+}
+
+addInternal() {
+	echo 1 > /sys/bus/pci/rescan
 }
 
 # check if the script is run as root
 if [ "$(whoami)" != "root" ]; then 
-    echo "You need to run the script with root privileges"
-    exit
+	echo "You need to run the script with root privileges"
+	exit
 fi
 
 case $1 in
 	-h|help)
-    echo "Valid arguments are \"egpu\", \"internal\", \"boot\", \"reenable\" or \"setup\"."
-    echo "Example: sudo all-ways-egpu setup"
-    echo "Usage:"
-    echo "To force the eGPU as primary, run: sudo all-ways-egpu egpu"
-    echo "then restart with the eGPU connected."
-    echo "In this mode, the script should default back to iGPU on restart if no eGPU is connected."
-    echo "Thus, if this works for you, you can stay in eGPU mode. Otherwise, run: sudo all-ways-egpu internal before removing eGPU and restarting."
-    exit 0
-    	;;
-	setup)
-		setupConfig
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"boot\" or \"setup [--all]\"."
+	echo "Example: sudo all-ways-egpu setup\n"
+	echo "Usage:"
+	echo "To force the eGPU as primary, run: sudo all-ways-egpu switch egpu"
+	echo "This will temporarily remove any internal graphics and restart the display manager, logging you out. The login screen should then display on the eGPU connected display"
+	echo "To re-enable integrated graphics, restart, or run: sudo all-ways-egpu internal"
+	echo "If this works for you, you may run the following command to automatically switch to eGPU on every boot up:"
+	echo "sudo all-ways-egpu configure egpu"
+	echo "In this mode, the script should default back to iGPU on boot up if no eGPU is connected."
 
-		echo "Attempt to re-enable these iGPU/initially disabled devices after boot (recommended)? [y/N]"
+	exit 0
+		;;
+	setup)
+		override=0
+		for option in "$@"; do
+			if [ "${option}" = "--all" ]; then
+				override=1
+			fi
+		done
+		setupConfig ${override}
+
+		echo "Attempt to re-enable these iGPU/initially disabled devices after login (recommended)? [y/N]"
 		read -r EN_RES
 
 		if [ "$EN_RES" = "y" ]; then
-			systemctl enable all-ways-egpu.service
-			cp /usr/share/all-ways-egpu/all-ways-egpu-reenable.desktop /home/*/.config/autostart/
+			for UP in /home/*/.config/autostart; do
+				cp /usr/share/all-ways-egpu/all-ways-egpu-reenable.desktop "$UP"/
+			done
 		else
-			systemctl disable all-ways-egpu.service
 			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
 		fi
-		
+
 		echo "Configuration files sucessfully created. See help for usage information"
 		;;
-	egpu)
-		configBind
+	configure)
+		for option in "$@"; do
+			if [ "${option}" = "egpu" ]; then
+				systemctl enable all-ways-egpu.service
+				exit
+			else
+				if [ "${option}" = "internal" ]; then
+					systemctl disable all-ways-egpu.service
+					exit
+				fi
+			fi
+		done
+		echo "Specifiy 'egpu' or 'internal' to be configured to be used at boot"
 		;;
-	internal)
-		unconfigBind
+	switch)
+		cardSelect=0
+		for option in "$@"; do
+			if [ "${option}" = "egpu" ]; then
+				cardSelect=1
+			else
+				if [ "${option}" = "internal" ]; then
+					cardSelect=2
+				fi
+			fi
+		done
+		if [ ${cardSelect} -eq 1 ]; then
+			removeInternal
+			exit
+		else
+			if [ ${cardSelect} -eq 2 ]; then
+				addInternal
+				exit
+			fi
+		fi
+		echo "Specifiy 'egpu' or 'internal' to be switched to"
 		;;
 	boot)
-		if [ "$(find /dev/dri/card* | wc -l)" -lt 1 ]; then
-			unbind
-			systemctl restart display-manager.service
+		if [ "$(find /dev/dri/card* | wc -l)" -gt 1 ]; then
+			removeInternal
 		fi
-		;;
-	reenable)
-		unbind
 		;;
 	*)
 	echo "Unknown argument: ${1}."
-	echo "Valid arguments are \"egpu\", \"internal\", \"boot\", \"reenable\" or \"setup\"."
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"boot\" or \"setup [--all]\"."
 	echo "Example: sudo all-ways-egpu setup"
+	echo "Example: sudo all-ways-egpu switch egpu"
 	exit 1
-    	;;
+		;;
 esac
