@@ -86,7 +86,7 @@ ResultActive=yes
 
 - This script is still in the testing phase for a variety of desktops and distros. If you have issues be sure to include your specific desktop configuration.
 
-- Applications that work on the console like Ubuntu's Plymouth may fail due to the virtual console switching. It is currently recommended to disable this.
+- Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail due to the virtual console switching. It is currently recommended to disable this.
 
 - I have also only tested with AMD eGPU + Intel iGPU so far. Nvidia testing is still to be done. Specifically, proprietery Nvidia drivers are not expected to work yet.
 

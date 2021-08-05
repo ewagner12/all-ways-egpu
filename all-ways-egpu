@@ -3,11 +3,10 @@
 USER_IDS_DIR=/usr/share/all-ways-egpu
 
 setupConfig() {
-	if [ -e $USER_IDS_DIR/user-dev-ids ]; then
+	if [ -e $USER_IDS_DIR/user-bus-ids ]; then
 		echo "Existing configuration file detected, would you like to overwrite it? [y/N]"
 		read -r OW_RES
 		if [ "$OW_RES" = "y" ]; then
-			rm -f $USER_IDS_DIR/user-dev-ids
 			rm -f $USER_IDS_DIR/user-bus-ids
 		else
 			echo "Existing configuration not changed, exiting setup."
@@ -15,7 +14,7 @@ setupConfig() {
 		fi
 	fi
 
-	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU and internal sound devices at boot:\n"
+	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU at boot:\n"
 
 	if [ "${1}" -eq 1 ]; then
 		echo "$(lspci -n)" > $USER_IDS_DIR/user-temp-ids
@@ -33,12 +32,10 @@ setupConfig() {
 
 		if [ "$DIS_RES" = "y" ]; then
 			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> $USER_IDS_DIR/user-bus-ids
-			printf '%s,' "$DEV_IDS" >> $USER_IDS_DIR/user-dev-ids
 		else
 			echo "Not disabling ""$PCI_BUS"
 		fi
 	done 3<$USER_IDS_DIR/user-temp-ids
-	sed -i 's/\(.*\),/\1\n/' $USER_IDS_DIR/user-dev-ids
 	rm -f $USER_IDS_DIR/user-temp-ids
 }
 
@@ -71,7 +68,6 @@ removeInternal() {
 		for VT in "$@"; do
 			echo 1 > "$VT"
 		done
-		sleep 1
 		systemctl start display-manager.service ) &
 	systemctl stop display-manager.service
 }
