@@ -44,7 +44,7 @@ sudo all-ways-egpu configure internal
 ```
 
 ### Method 2: Switch boot_vga
-This method simply switches the boot_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor.
+This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin seem to work with this method in my testing.
 ```
 sudo all-ways-egpu set-boot-vga egpu
 ```

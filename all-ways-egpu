@@ -130,12 +130,16 @@ case $1 in
 	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\" or \"setup [--all]\"."
 	echo "Example: sudo all-ways-egpu setup\n"
 	echo "Usage:"
+	echo "Method 1:"
 	echo "To force the eGPU as primary, run: sudo all-ways-egpu switch egpu"
 	echo "This will temporarily remove any internal graphics and restart the display manager, logging you out. The login screen should then display on the eGPU connected display"
 	echo "To re-enable integrated graphics, restart, or run: sudo all-ways-egpu internal"
 	echo "If this works for you, you may run the following command to automatically switch to eGPU on every boot up:"
 	echo "sudo all-ways-egpu configure egpu"
 	echo "In this mode, the script should default back to iGPU on boot up if no eGPU is connected."
+	echo "Method 2:"
+	echo "To only switch the boot_vga flag, run: sudo all-ways-egpu set-boot-vga egpu"
+	echo "This may be a useful method for enabling the eGPU in certain Wayland desktops and may work better than Method 1 for some setups"
 
 	exit 0
 		;;
@@ -148,7 +152,7 @@ case $1 in
 		done
 		setupConfig ${override}
 
-		echo "Attempt to re-enable these iGPU/initially disabled devices after login (recommended)? [y/N]"
+		echo "Attempt to re-enable these iGPU/initially disabled devices after login (recommended if using Method 1)? [y/N]"
 		read -r EN_RES
 
 		if [ "$EN_RES" = "y" ]; then
@@ -157,6 +161,15 @@ case $1 in
 			done
 		else
 			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
+		fi
+		
+		echo "Attempt to set boot_vga flag at startup? Recommended if using Method 2. [y/N]"
+		read -r EN_RES_2
+		
+		if [ "$EN_RES_2" = "y" ]; then
+			systemctl enable all-ways-egpu-boot-vga.service
+		else
+			systemctl disable all-ways-egpu-boot-vga.service
 		fi
 
 		echo "Configuration files sucessfully created. See help for usage information"
@@ -236,8 +249,7 @@ case $1 in
 			echo "No eGPU attached display detected with open source drivers. (Of ${DISP_NUM} eGPU outputs detected) Internal mode and setting DRI_PRIME variable are recommended for this configuration."
 			exit
 		else
-			setBootVGA
-			#removeInternal
+			removeInternal
 		fi
 		;;
 	*)
