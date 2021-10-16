@@ -1,0 +1,10 @@
+[Unit]
+Description=Configure eGPU as primary using boot_vga under Wayland desktops
+After=display-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/all-ways-egpu set-boot-vga egpu
+
+[Install]
+WantedBy=graphical.target
