@@ -15,6 +15,7 @@ install:
 
 uninstall:
 	${DESTDIR}${BINDIR}/all-ways-egpu configure internal
+	${DESTDIR}${BINDIR}/all-ways-egpu set-boot-vga internal
 	systemctl disable all-ways-egpu.service
 	rm -f ${DESTDIR}${BINDIR}/all-ways-egpu
 	rm -f ${DESTDIR}${SYSDIR}/all-ways-egpu.service

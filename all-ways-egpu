@@ -13,6 +13,8 @@ setupConfig() {
 			return
 		fi
 	fi
+	echo 0 > $USER_IDS_DIR/0
+	echo 1 > $USER_IDS_DIR/1
 
 	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU at boot:\n"
 
@@ -24,7 +26,7 @@ setupConfig() {
 
 	while read -r CARDS <&3; do
 		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
-		DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
+		#DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
 		DEV_DRIVERS=$(lspci -k | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
 		lspci | grep "$PCI_BUS"
 		printf "Would you like to disable this device during boot [y/N]\n"
@@ -76,6 +78,47 @@ addInternal() {
 	echo 1 > /sys/bus/pci/rescan
 }
 
+setBootVGA() {
+	if [ ! -e $USER_IDS_DIR/user-bus-ids ]; then
+		echo "Error: No configuration file. Please run setup."
+		exit
+	fi
+	
+	if [ -e $USER_IDS_DIR/bind-paths ]; then
+		echo "Error: Bind mounts already set. Use "sudo all-ways-egpu set-boot-vga internal" or reboot to reset mounts"
+		exit
+	fi
+
+	PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
+	set -- /sys/class/drm/card[0-9]/device
+	for BOOT_VGA_PATH in "$@"; do
+		if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
+			echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
+			mount -n --bind -o ro $USER_IDS_DIR/0 "$BOOT_VGA_PATH"/boot_vga
+		else
+			if ! echo "$PCI_DEV" | grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)"; then
+				echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
+				mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
+			fi
+		fi
+	done
+	echo "Bind mounts set. Restart Display Manager for changes to take effect."
+}
+
+removeBootVGA() {
+	if [ ! -e $USER_IDS_DIR/bind-paths ]; then
+		echo "Error: No bind mounts recorded. Use "all-ways-egpu set-boot-vga egpu" to set mounts or reboot to reset mounts"
+		exit
+	fi
+
+	BIND_PATHS=$(cat $USER_IDS_DIR/bind-paths)
+	echo "$BIND_PATHS" | while read -r LINE; do
+		umount -n "$LINE"/boot_vga
+	done
+	rm -f $USER_IDS_DIR/bind-paths
+	echo "Bind mounts removed successfully. Restart Display Manager for changes to take effect."
+}
+
 # check if the script is run as root
 if [ "$(whoami)" != "root" ]; then 
 	echo "You need to run the script with root privileges"
@@ -84,7 +127,7 @@ fi
 
 case $1 in
 	-h|help)
-	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"boot\" or \"setup [--all]\"."
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\" or \"setup [--all]\"."
 	echo "Example: sudo all-ways-egpu setup\n"
 	echo "Usage:"
 	echo "To force the eGPU as primary, run: sudo all-ways-egpu switch egpu"
@@ -154,14 +197,52 @@ case $1 in
 		fi
 		echo "Specifiy 'egpu' or 'internal' to be switched to"
 		;;
+	set-boot-vga)
+		cardSelect=0
+		for option in "$@"; do
+			if [ "${option}" = "egpu" ]; then
+				cardSelect=1
+			else
+				if [ "${option}" = "internal" ]; then
+					cardSelect=2
+				fi
+			fi
+		done
+		if [ ${cardSelect} -eq 2 ]; then
+			removeBootVGA
+			exit
+		else
+			if [ ${cardSelect} -eq 1 ]; then
+				setBootVGA
+				exit
+			fi
+		fi
+		echo "Specifiy 'egpu' or 'internal' to be switched to"
+		;;
 	boot)
-		if [ "$(find /dev/dri/card* | wc -l)" -gt 1 ]; then
-			removeInternal
+		DISP_NUM=0
+		DISP_DISCON=0
+		PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
+		set -- /sys/class/drm/card[0-9]*/card[0-9]*-*
+		for DISP in "$@"; do
+			if ! echo "$PCI_DEV" | grep -q "$(find -L "$DISP/../device/driver" -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)"; then
+					if [ -e "$DISP/status" ]; then
+						DISP_NUM=$(($DISP_NUM + 1))
+						DISP_DISCON=$(($DISP_DISCON + $(grep -ce ^disconnected < "$DISP/status"))) || true
+					fi
+			fi
+		done
+		if [ "$DISP_DISCON" -eq "$DISP_NUM" ] && [ "$DISP_NUM" -gt 0 ]; then
+			echo "No eGPU attached display detected with open source drivers. (Of ${DISP_NUM} eGPU outputs detected) Internal mode and setting DRI_PRIME variable are recommended for this configuration."
+			exit
+		else
+			setBootVGA
+			#removeInternal
 		fi
 		;;
 	*)
 	echo "Unknown argument: ${1}."
-	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"boot\" or \"setup [--all]\"."
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\" or \"setup [--all]\"."
 	echo "Example: sudo all-ways-egpu setup"
 	echo "Example: sudo all-ways-egpu switch egpu"
 	exit 1
