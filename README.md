@@ -32,6 +32,7 @@ To setup the script based on your hardware:
 sudo all-ways-egpu setup
 ```
 
+### Method 1: Force iGPU off
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
 ```
 sudo all-ways-egpu configure egpu
@@ -40,6 +41,12 @@ sudo all-ways-egpu configure egpu
 To disable forcing the chosen iGPU devices off
 ```
 sudo all-ways-egpu configure internal
+```
+
+### Method 2: Switch boot_vga
+This method simply switches the boot_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor.
+```
+sudo all-ways-egpu set-boot-vga egpu
 ```
 
 additional info can be found using the help flag.
