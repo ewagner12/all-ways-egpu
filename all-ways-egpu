@@ -231,6 +231,8 @@ case $1 in
 						exit
 					fi
 				done
+				echo "No eGPU detected."
+				exit
 			fi
 		fi
 		echo "Specifiy 'egpu' or 'internal' to be switched to"
