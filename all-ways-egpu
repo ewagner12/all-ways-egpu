@@ -1,13 +1,14 @@
 #!/usr/bin/env sh
 
 USER_IDS_DIR=/usr/share/all-ways-egpu
+PCI_DEV=$USER_IDS_DIR/user-bus-ids
 
 setupConfig() {
-	if [ -e $USER_IDS_DIR/user-bus-ids ]; then
+	if [ -e $PCI_DEV ]; then
 		echo "Existing configuration file detected, would you like to overwrite it? [y/N]"
 		read -r OW_RES
 		if [ "$OW_RES" = "y" ]; then
-			rm -f $USER_IDS_DIR/user-bus-ids
+			rm -f $PCI_DEV
 		else
 			echo "Existing configuration not changed, exiting setup."
 			return
@@ -33,7 +34,7 @@ setupConfig() {
 		read -r DIS_RES
 
 		if [ "$DIS_RES" = "y" ]; then
-			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> $USER_IDS_DIR/user-bus-ids
+			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> $PCI_DEV
 		else
 			echo "Not disabling ""$PCI_BUS"
 		fi
@@ -42,7 +43,7 @@ setupConfig() {
 }
 
 removeInternal() {
-	if [ ! -e $USER_IDS_DIR/user-bus-ids ]; then
+	if [ ! -e $PCI_DEV ]; then
 		echo "Error: No configuration file. Please run setup."
 		exit
 	fi
@@ -58,14 +59,13 @@ removeInternal() {
 			echo 0 > "$VT"
 		done
 
-		PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
-		echo "$PCI_DEV" | while read -r LINE; do
+		while read -r LINE; do
 			BUS=$(echo "$LINE"  | awk '{ print $1 }')
 			DRIVER=$(echo "$LINE" | awk '{ print $2 }')
 
 			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/unbind
 			echo 1 > /sys/bus/pci/devices/0000:"$BUS"/remove
-		done
+		done < "$PCI_DEV"
 		set -- /sys/class/vtconsole/vtcon*/bind
 		for VT in "$@"; do
 			echo 1 > "$VT"
@@ -79,7 +79,7 @@ addInternal() {
 }
 
 setBootVGA() {
-	if [ ! -e $USER_IDS_DIR/user-bus-ids ]; then
+	if [ ! -e $PCI_DEV ]; then
 		echo "Error: No configuration file. Please run setup."
 		exit
 	fi
@@ -89,14 +89,13 @@ setBootVGA() {
 		exit
 	fi
 
-	PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
 	set -- /sys/class/drm/card[0-9]/device
 	for BOOT_VGA_PATH in "$@"; do
 		if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
 			echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
 			mount -n --bind -o ro $USER_IDS_DIR/0 "$BOOT_VGA_PATH"/boot_vga
 		else
-			if ! echo "$PCI_DEV" | grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)"; then
+			if ! grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)" < "$PCI_DEV"; then
 				echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
 				mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
 			fi
@@ -111,10 +110,10 @@ removeBootVGA() {
 		exit
 	fi
 
-	BIND_PATHS=$(cat $USER_IDS_DIR/bind-paths)
-	echo "$BIND_PATHS" | while read -r LINE; do
+	BIND_PATHS=$USER_IDS_DIR/bind-paths
+	while read -r LINE; do
 		umount -n "$LINE"/boot_vga
-	done
+	done < "$BIND_PATHS"
 	rm -f $USER_IDS_DIR/bind-paths
 	echo "Bind mounts removed successfully. Restart Display Manager for changes to take effect."
 }
@@ -226,31 +225,39 @@ case $1 in
 			exit
 		else
 			if [ ${cardSelect} -eq 1 ]; then
-				setBootVGA
-				exit
+				for CARD in $(lspci -d ::0300 | cut -c -7); do
+					if ! grep -q "$CARD" < "$PCI_DEV"; then
+						setBootVGA
+						exit
+					fi
+				done
 			fi
 		fi
 		echo "Specifiy 'egpu' or 'internal' to be switched to"
 		;;
 	boot)
-		DISP_NUM=0
-		DISP_DISCON=0
-		PCI_DEV=$(cat $USER_IDS_DIR/user-bus-ids)
-		set -- /sys/class/drm/card[0-9]*/card[0-9]*-*
-		for DISP in "$@"; do
-			if ! echo "$PCI_DEV" | grep -q "$(find -L "$DISP/../device/driver" -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)"; then
+		for CARD in $(lspci -d ::0300 | cut -c -7); do
+			if ! grep -q "$CARD" < "$PCI_DEV"; then
+			DISP_NUM=0
+			DISP_DISCON=0
+			set -- /sys/class/drm/card[0-9]*/card[0-9]*-*
+			for DISP in "$@"; do
+				if ! grep -q "$(find -L "$DISP/../device/driver" -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)" < "$PCI_DEV"; then
 					if [ -e "$DISP/status" ]; then
-						DISP_NUM=$(($DISP_NUM + 1))
-						DISP_DISCON=$(($DISP_DISCON + $(grep -ce ^disconnected < "$DISP/status"))) || true
+						DISP_NUM=$((DISP_NUM + 1))
+						DISP_DISCON=$((DISP_DISCON + $(grep -ce ^disconnected < "$DISP/status"))) || true
 					fi
+				fi
+			done
+			if [ "$DISP_DISCON" -eq "$DISP_NUM" ] && [ "$DISP_NUM" -gt 0 ]; then
+				echo "No eGPU attached display detected with open source drivers. (Of ${DISP_NUM} eGPU outputs detected) Internal mode and setting DRI_PRIME variable are recommended for this configuration."
+				exit
+			else
+				removeInternal
+			fi
 			fi
 		done
-		if [ "$DISP_DISCON" -eq "$DISP_NUM" ] && [ "$DISP_NUM" -gt 0 ]; then
-			echo "No eGPU attached display detected with open source drivers. (Of ${DISP_NUM} eGPU outputs detected) Internal mode and setting DRI_PRIME variable are recommended for this configuration."
-			exit
-		else
-			removeInternal
-		fi
+		echo "No eGPU detected"
 		;;
 	*)
 	echo "Unknown argument: ${1}."
