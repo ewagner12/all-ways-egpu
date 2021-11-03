@@ -1,29 +1,59 @@
 #!/usr/bin/env sh
 
+BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
+VERSION=0.30.0
 
 setupConfig() {
-	if [ -e $PCI_DEV ]; then
+	if [ -e $PCI_DEV ] || [ -e $USER_IDS_DIR/egpu-bus-ids ]; then
 		echo "Existing configuration file detected, would you like to overwrite it? [y/N]"
 		read -r OW_RES
 		if [ "$OW_RES" = "y" ]; then
 			rm -f $PCI_DEV
+			rm -f $USER_IDS_DIR/egpu-bus-ids
 		else
 			echo "Existing configuration not changed, exiting setup."
+			setupAutostart
 			return
 		fi
 	fi
 	echo 0 > $USER_IDS_DIR/0
 	echo 1 > $USER_IDS_DIR/1
 
-	printf "To force the eGPU as primary, it is recommended to disable all iGPU/dGPU at boot:\n"
-
 	if [ "${1}" -eq 1 ]; then
 		echo "$(lspci -n)" > $USER_IDS_DIR/user-temp-ids
 	else
-		echo "$(lspci -d ::0300 -n && lspci -d ::0302 -n && lspci -d ::0403 -n)" > $USER_IDS_DIR/user-temp-ids
+		if [ "${1}" -eq 2 ]; then
+			touch $USER_IDS_DIR/user-temp-ids
+		else
+			echo "$(lspci -d ::0300 -n && lspci -d ::0302 -n && lspci -d ::0403 -n)" > $USER_IDS_DIR/user-temp-ids
+		fi
 	fi
+
+	printf "To force the eGPU as primary, we need to know which card is the eGPU to be used as primary.\n"
+
+	while read -r CARDS <&3; do
+		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
+		#DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
+		DEV_DRIVERS=$(lspci -k | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
+		lspci | grep "$PCI_BUS"
+		printf "Is this the eGPU to be used as primary? [y/N]\n"
+		read -r DIS_RES
+
+		if [ "$DIS_RES" = "y" ]; then
+			echo "Using as primary ""$PCI_BUS"
+			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> $USER_IDS_DIR/egpu-bus-ids
+		else
+			echo "Not using ""$PCI_BUS"
+		fi
+	done 3<$USER_IDS_DIR/user-temp-ids
+
+	if [ ! -e $USER_IDS_DIR/egpu-bus-ids ]; then
+		manualSetup $USER_IDS_DIR/egpu-bus-ids
+	fi
+
+	printf "Identify all iGPU/dGPUs to be potentially disabled boot:\n"
 
 	while read -r CARDS <&3; do
 		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
@@ -39,20 +69,94 @@ setupConfig() {
 			echo "Not disabling ""$PCI_BUS"
 		fi
 	done 3<$USER_IDS_DIR/user-temp-ids
+
+	if [ ! -e $PCI_DEV ]; then
+		manualSetup $PCI_DEV
+	fi
+
 	rm -f $USER_IDS_DIR/user-temp-ids
+	setupAutostart
 }
 
-removeInternal() {
-	if [ ! -e $PCI_DEV ]; then
+setupAutostart() {
+	echo "Recommended if using Method 1: Attempt to re-enable the iGPU/initially disabled devices after login? [y/N]"
+	read -r EN_RES
+
+	echo " Recommended if using Method 2: Attempt to set boot_vga flag at startup? [y/N]"
+	read -r EN_RES_2
+		
+	if [ -e $(command -v systemctl) ]; then
+		SYSDIR=/etc/systemd/system
+		cp ${USER_IDS_DIR}/all-ways-egpu.service ${SYSDIR}
+
+		if [ "$EN_RES" = "y" ]; then
+			cp ${USER_IDS_DIR}/all-ways-egpu-user.service ${SYSDIR}
+			for UP in /home/*/.config/autostart; do
+				cp /usr/share/all-ways-egpu/all-ways-egpu-reenable.desktop "$UP"/
+			done
+		else
+			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
+		fi
+		if [ "$EN_RES_2" = "y" ]; then
+			cp ${USER_IDS_DIR}/all-ways-egpu-boot-vga.service ${SYSDIR}
+			systemctl enable all-ways-egpu-boot-vga.service
+		else
+			systemctl disable all-ways-egpu-boot-vga.service
+		fi
+
+	else
+		if [ -e $(command -v rc-update) ]; then
+			SYSDIR=/etc/init.d
+			cp ${USER_IDS_DIR}/all-ways-egpu-openrc ${SYSDIR}
+
+			if [ "$EN_RES" = "y" ]; then
+				echo "Re-enable after login not currently supported without systemd"
+			fi
+			if [ "$EN_RES_2" = "y" ]; then
+				cp ${USER_IDS_DIR}/all-ways-egpu-boot-vga-openrc ${SYSDIR}
+				rc-update add all-ways-egpu-boot-vga-openrc 5
+			else
+				rc-update delete all-ways-egpu-boot-vga-openrc 5
+			fi
+		fi
+	fi
+}
+
+manualSetup() {
+	IDS_FILE="${1}"
+	echo "Manual Setup: Enter Bus IDs and drivers in the following example format or enter 'n' to skip.\nxx:xx.x driver"
+	while true; do
+		read MAN_ID
+		if [ "$MAN_ID" = "n" ]; then
+            break
+        fi
+		echo "$MAN_ID" >> $IDS_FILE
+		echo "Enter another ID and driver or enter 'n' if done."
+	done
+}
+
+removeIDs() {
+	IDS_FILE="${1}"
+	if [ ! -e $IDS_FILE ]; then
 		echo "Error: No configuration file. Please run setup."
-		exit
+		return
+	fi
+
+	if [ -e $(command -v systemctl) ]; then
+		START_CMD="systemctl start display-manager.service"
+		STOP_CMD="systemctl stop display-manager.service"
+	else
+		if [ -e $(command -v rc-service) ]; then
+			START_CMD="rc-service display-manager start"
+			STOP_CMD="rc-service display-manager stop"
+		else
+			echo "No way to restart display-manager found"
+			return
+		fi
 	fi
 
 	( trap '' HUP TERM
-		while [ "$(systemctl status display-manager | awk '/Active:/{print$2}')" \
-			= "active" ]; do
-			sleep 1
-		done
+		sleep 1
 
 		set -- /sys/class/vtconsole/vtcon*/bind
 		for VT in "$@"; do
@@ -65,13 +169,13 @@ removeInternal() {
 
 			echo "0000:""$BUS" > /sys/bus/pci/drivers/"$DRIVER"/unbind
 			echo 1 > /sys/bus/pci/devices/0000:"$BUS"/remove
-		done < "$PCI_DEV"
+		done < "$IDS_FILE"
 		set -- /sys/class/vtconsole/vtcon*/bind
 		for VT in "$@"; do
 			echo 1 > "$VT"
 		done
-		systemctl start display-manager.service ) &
-	systemctl stop display-manager.service
+		$START_CMD ) &
+	$STOP_CMD
 }
 
 addInternal() {
@@ -81,33 +185,39 @@ addInternal() {
 setBootVGA() {
 	if [ ! -e $PCI_DEV ]; then
 		echo "Error: No configuration file. Please run setup."
-		exit
+		return
 	fi
 	
 	if [ -e $USER_IDS_DIR/bind-paths ]; then
 		echo "Error: Bind mounts already set. Use "sudo all-ways-egpu set-boot-vga internal" or reboot to reset mounts"
-		exit
+		return
 	fi
 
-	set -- /sys/class/drm/card[0-9]/device
-	for BOOT_VGA_PATH in "$@"; do
-		if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
-			echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
-			mount -n --bind -o ro $USER_IDS_DIR/0 "$BOOT_VGA_PATH"/boot_vga
-		else
-			if ! grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)" < "$PCI_DEV"; then
-				echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
-				mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
-			fi
+	for CARD in $(lspci -d ::0300 | cut -c -7); do
+		if grep -q "$CARD" < $USER_IDS_DIR/egpu-bus-ids; then
+			set -- /sys/class/drm/card[0-9]/device
+			for BOOT_VGA_PATH in "$@"; do
+				if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
+					echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
+					mount -n --bind -o ro $USER_IDS_DIR/0 "$BOOT_VGA_PATH"/boot_vga
+				else
+					if grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)" < $USER_IDS_DIR/egpu-bus-ids; then
+						echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
+						mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
+					fi
+				fi
+			done
+			echo "Bind mounts set. Restart Display Manager for changes to take effect."
+			return
 		fi
 	done
-	echo "Bind mounts set. Restart Display Manager for changes to take effect."
+	echo "No eGPU detected."
 }
 
 removeBootVGA() {
 	if [ ! -e $USER_IDS_DIR/bind-paths ]; then
 		echo "Error: No bind mounts recorded. Use "all-ways-egpu set-boot-vga egpu" to set mounts or reboot to reset mounts"
-		exit
+		return
 	fi
 
 	BIND_PATHS=$USER_IDS_DIR/bind-paths
@@ -118,15 +228,35 @@ removeBootVGA() {
 	echo "Bind mounts removed successfully. Restart Display Manager for changes to take effect."
 }
 
-# check if the script is run as root
-if [ "$(whoami)" != "root" ]; then 
-	echo "You need to run the script with root privileges"
-	exit
-fi
+uninstall() {
+	removeBootVGA
+	rm -f ${BINDIR}/all-ways-egpu
+	if [ -e $(command -v systemctl) ]; then
+		SYSDIR=/etc/systemd/system
+		systemctl disable all-ways-egpu.service
+		systemctl disable all-ways-egpu-boot-vga.service
+		rm -f ${SYSDIR}/all-ways-egpu.service
+		rm -f ${SYSDIR}/all-ways-egpu-user.service
+		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
+	else
+		if [ -e $(command -v rc-update) ]; then
+			SYSDIR=/etc/init.d
+			rc-update delete all-ways-egpu 5
+			rc-update delete all-ways-egpu-boot-vga 5
+			rm -f ${SYSDIR}/all-ways-egpu
+			rm -f ${SYSDIR}/all-ways-egpu-user
+			rm -f ${SYSDIR}/all-ways-egpu-boot-vga
+		else
+			echo "Service Files not found, not removed"
+		fi
+	fi
+	rm -rf /usr/share/all-ways-egpu
+	rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
+	rm -f /usr/share/applications/all-ways-egpu.desktop
+}
 
-case $1 in
-	-h|help)
-	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\" or \"setup [--all]\"."
+help() {
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\", \"setup [--all]|[--manual]\" or \"uninstall\"."
 	echo "Example: sudo all-ways-egpu setup\n"
 	echo "Usage:"
 	echo "Method 1:"
@@ -139,7 +269,18 @@ case $1 in
 	echo "Method 2:"
 	echo "To only switch the boot_vga flag, run: sudo all-ways-egpu set-boot-vga egpu"
 	echo "This may be a useful method for enabling the eGPU in certain Wayland desktops and may work better than Method 1 for some setups"
+}
 
+# check if the script is run as root
+if [ "$(whoami)" != "root" ]; then 
+	echo "You need to run the script with root privileges. Attempting to raise via sudo:"
+	sudo "${0}" "$@"
+	exit $?
+fi
+
+case $1 in
+	-h|help)
+	help
 	exit 0
 		;;
 	setup)
@@ -148,39 +289,34 @@ case $1 in
 			if [ "${option}" = "--all" ]; then
 				override=1
 			fi
+			if [ "${option}" = "--manual" ]; then
+				override=2
+			fi
 		done
 		setupConfig ${override}
-
-		echo "Attempt to re-enable these iGPU/initially disabled devices after login (recommended if using Method 1)? [y/N]"
-		read -r EN_RES
-
-		if [ "$EN_RES" = "y" ]; then
-			for UP in /home/*/.config/autostart; do
-				cp /usr/share/all-ways-egpu/all-ways-egpu-reenable.desktop "$UP"/
-			done
-		else
-			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
-		fi
-		
-		echo "Attempt to set boot_vga flag at startup? Recommended if using Method 2. [y/N]"
-		read -r EN_RES_2
-		
-		if [ "$EN_RES_2" = "y" ]; then
-			systemctl enable all-ways-egpu-boot-vga.service
-		else
-			systemctl disable all-ways-egpu-boot-vga.service
-		fi
 
 		echo "Configuration files sucessfully created. See help for usage information"
 		;;
 	configure)
+		if [ -e $(command -v systemctl) ]; then
+			ENABLE_CMD="systemctl enable all-ways-egpu.service"
+			DISABLE_CMD="systemctl disable all-ways-egpu.service"
+		else
+			if [ -e $(command -v rc-service) ]; then
+				ENABLE_CMD="rc-service add all-ways-egpu-openrc 5"
+				DISABLE_CMD="rc-service delete all-ways-egpu-openrc 5"
+			else
+				echo "No way to run service files found"
+				exit 1
+			fi
+		fi
 		for option in "$@"; do
 			if [ "${option}" = "egpu" ]; then
-				systemctl enable all-ways-egpu.service
+				$ENABLE_CMD
 				exit
 			else
 				if [ "${option}" = "internal" ]; then
-					systemctl disable all-ways-egpu.service
+					$DISABLE_CMD
 					exit
 				fi
 			fi
@@ -197,17 +333,25 @@ case $1 in
 					cardSelect=2
 				fi
 			fi
-		done
-		if [ ${cardSelect} -eq 1 ]; then
-			removeInternal
-			exit
-		else
-			if [ ${cardSelect} -eq 2 ]; then
-				addInternal
-				exit
+			if [ "${option}" = "--remove-egpu" ]; then
+				cardSelect=3
 			fi
-		fi
-		echo "Specifiy 'egpu' or 'internal' to be switched to"
+		done
+		case $cardSelect in
+			1)
+				removeIDs $PCI_DEV
+				;;
+			2)
+				addInternal
+				;;
+			3)
+				addInternal
+				removeIDs $USER_IDS_DIR/egpu-bus-ids
+				;;
+			*)
+				echo "Specifiy 'egpu' or 'internal' to be switched to"
+				;;
+		esac
 		;;
 	set-boot-vga)
 		cardSelect=0
@@ -225,13 +369,7 @@ case $1 in
 			exit
 		else
 			if [ ${cardSelect} -eq 1 ]; then
-				for CARD in $(lspci -d ::0300 | cut -c -7); do
-					if ! grep -q "$CARD" < "$PCI_DEV"; then
-						setBootVGA
-						exit
-					fi
-				done
-				echo "No eGPU detected."
+				setBootVGA
 				exit
 			fi
 		fi
@@ -255,17 +393,110 @@ case $1 in
 				echo "No eGPU attached display detected with open source drivers. (Of ${DISP_NUM} eGPU outputs detected) Internal mode and setting DRI_PRIME variable are recommended for this configuration."
 				exit
 			else
-				removeInternal
+				removeIDs $PCI_DEV
 			fi
 			fi
 		done
 		echo "No eGPU detected"
 		;;
+	uninstall)
+		uninstall
+		echo "all-ways-eGPU uninstalled"
+		;;
 	*)
-	echo "Unknown argument: ${1}."
-	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\" or \"setup [--all]\"."
-	echo "Example: sudo all-ways-egpu setup"
-	echo "Example: sudo all-ways-egpu switch egpu"
-	exit 1
+	#Menu
+	while true; do
+		clear
+		echo "-------------------------"	
+		echo " All-Ways-eGPU Main Menu"
+		echo "-------------------------"
+		echo "1. Guided Setup"
+		echo "2. Manual Setup"
+		echo "3. Disable a GPU (Method 1)"
+		echo "4. Set boot-vga Flag (Method 2)"
+		echo "5. Help"
+		echo "6. Version"
+		echo "7. Uninstall all-ways-eGPU"
+		echo "8. Exit\n"
+		#local MENU_CHOICE
+		read -p "Enter Choice [1-8]: " MENU_CHOICE
+		case $MENU_CHOICE in
+			1)
+				setupConfig 0
+				echo "Setup sucessfully. See help for usage information" && sleep 2
+				;;
+			2)
+				setupConfig 2
+				sleep 2
+				;;
+			3) clear
+				echo "1. Remove iGPU/dGPU now?"
+				echo "2. Remove eGPU now? (May allow hot-unplug)"
+				echo "3. Configure automatic disabling of iGPU/dGPU at boot\n"
+				read -p "Enter Choice [1-3]: " MENU_CHOICE
+				case "${MENU_CHOICE}" in
+					1)
+						removeIDs $PCI_DEV
+						sleep 2
+						;;
+					2)
+						removeIDs $USER_IDS_DIR/egpu-bus-ids
+						sleep 2
+						;;
+					3)
+						read -p "Would you like to automatically disable iGPU at boot? [y/N]: " MENU_CHOICE
+							if [ "${MENU_CHOICE}" = "y" ]; then
+								all-ways-egpu configure egpu
+							else
+								all-ways-egpu configure internal
+							fi 
+						;;
+					*)
+						echo "Error: $MENU_CHOICE not a valid option." && sleep 2
+						;;
+				esac
+				;;
+			4) clear
+				echo "1. Set boot-vga Flag to eGPU"
+				echo "2. Set boot-vga Flag to default (iGPU/dGPU)"
+				echo "3. Configure boot-vga Flag at boot\n"
+				read -p "Enter Choice [1-3]: " MENU_CHOICE
+				case "${MENU_CHOICE}" in
+					1)
+						setBootVGA
+						sleep 2
+						;;
+					2)
+						removeBootVGA
+						sleep 2
+						;;
+					3)
+						setupAutostart
+						sleep 2
+						;;
+					*)
+						echo "Error: $MENU_CHOICE not a valid option." && sleep 2
+						;;
+				esac
+				;;
+			5) help
+				read -p "Press [Enter] to return to menu." MENU_CHOICE
+				;;
+			6) echo "all-ways-egpu version: $VERSION"
+				read -p "Press [Enter] to return to menu." MENU_CHOICE
+				;;
+			7) read -p "Are you sure you want to uninstall? [y/N]: " MENU_CHOICE
+				if [ "${MENU_CHOICE}" = "y" ]; then
+					uninstall
+					echo "all-ways-eGPU uninstalled" && sleep 1
+				fi
+				exit
+				;;
+			8) exit
+				;;
+			*) echo "Error: $MENU_CHOICE not a valid option." && sleep 2
+				;;
+		esac
+	done
 		;;
 esac

@@ -3,9 +3,16 @@ Configures eGPU as primary under Linux Wayland desktops.
 
 Note this script is not designed to replace existing solutions such as [gswitch](https://github.com/karli-sjoberg/gswitch) or [egpu-switcher](https://github.com/hertg/egpu-switcher). If you have an Xorg based desktop, these solutions are still the best option and should be preferred over this script.
 
-## Installation/Uninstallation:
+## Installation:
+### Releases (Recommended):
+Download and install the latest release using the following one line command:
 
-Clone the repo:
+```
+cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; sudo make install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
+```
+
+### Git
+Clone the repo to get the latest from github:
 ```
 git clone https://github.com/ewagner12/all-ways-egpu.git
 ```
@@ -20,9 +27,9 @@ Install:
 sudo make install
 ```
 
-Uninstall:
+##Uninstallation:
 ```
-sudo make uninstall
+all-ways-egpu uninstall
 ```
 
 ## Usage:
@@ -35,21 +42,23 @@ sudo all-ways-egpu setup
 ### Method 1: Force iGPU off
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
 ```
-sudo all-ways-egpu configure egpu
+# all-ways-egpu configure egpu
 ```
 
 To disable forcing the chosen iGPU devices off
 ```
-sudo all-ways-egpu configure internal
+# all-ways-egpu configure internal
 ```
 
 ### Method 2: Switch boot_vga
 This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin seem to work with this method in my testing.
 ```
-sudo all-ways-egpu set-boot-vga egpu
+# all-ways-egpu set-boot-vga egpu
 ```
 
 additional info can be found using the help flag.
+
+As of version 0.30 all functions can also be accessed through a menu system by simply using `all-ways-egpu`.
 
 ## Extra Steps:
 
@@ -95,6 +104,6 @@ ResultActive=yes
 
 - Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail due to the virtual console switching. It is currently recommended to disable this.
 
-- I have also only tested with AMD eGPU + Intel iGPU so far. Nvidia testing is still to be done. Specifically, proprietery Nvidia drivers are not expected to work yet.
+- I have also only tested with AMD eGPU + Intel iGPU so far. Nvidia testing is still to be done. Specifically, proprietery Nvidia drivers may not work yet.
 
 - PR's for any other issues welcome :)

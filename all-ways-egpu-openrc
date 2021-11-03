@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+
+command="/usr/bin/all-ways-egpu"
+command_args="boot"
+pidfile="/var/run/${RC_SVCNAME}.pid"
+name="All-Ways-eGPU Start-up GPU Daemon"
+
+description="This daemon is used by the all-ways-egpu script to automatically disable a particular GPU at startup"
+
+depends() {
+    before display-manager
+}
