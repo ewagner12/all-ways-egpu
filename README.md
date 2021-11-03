@@ -24,10 +24,10 @@ cd all-ways-egpu
 
 Install:
 ```
-sudo make install
+make install
 ```
 
-##Uninstallation:
+## Uninstallation:
 ```
 all-ways-egpu uninstall
 ```
@@ -36,24 +36,24 @@ all-ways-egpu uninstall
 
 To setup the script based on your hardware:
 ```
-sudo all-ways-egpu setup
+all-ways-egpu setup
 ```
 
 ### Method 1: Force iGPU off
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
 ```
-# all-ways-egpu configure egpu
+all-ways-egpu configure egpu
 ```
 
 To disable forcing the chosen iGPU devices off
 ```
-# all-ways-egpu configure internal
+all-ways-egpu configure internal
 ```
 
 ### Method 2: Switch boot_vga
 This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin seem to work with this method in my testing.
 ```
-# all-ways-egpu set-boot-vga egpu
+all-ways-egpu set-boot-vga egpu
 ```
 
 additional info can be found using the help flag.
