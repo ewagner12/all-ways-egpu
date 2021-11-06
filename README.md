@@ -102,6 +102,8 @@ ResultActive=yes
 
 - This script is still in the testing phase for a variety of desktops and distros. If you have issues be sure to include your specific desktop configuration.
 
+- Note: the OpenRC calls currently assume the display manager is started with an init script called "display-manager". On some distros, xdm or a script with some other name is used. In these cases, I recommend linking that script with the following command: `ln -s /etc/init.d/xdm /etc/init.d/display-manager`
+
 - Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail due to the virtual console switching. It is currently recommended to disable this.
 
 - I have also only tested with AMD eGPU + Intel iGPU so far. Nvidia testing is still to be done. Specifically, proprietery Nvidia drivers may not work yet.
