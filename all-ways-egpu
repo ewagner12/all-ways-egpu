@@ -3,7 +3,7 @@
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
-VERSION=0.30.0
+VERSION=0.31.0
 
 setupConfig() {
 	if [ -e $PCI_DEV ] || [ -e $USER_IDS_DIR/egpu-bus-ids ]; then
@@ -85,7 +85,7 @@ setupAutostart() {
 	echo " Recommended if using Method 2: Attempt to set boot_vga flag at startup? [y/N]"
 	read -r EN_RES_2
 		
-	if [ -e $(command -v systemctl) ]; then
+	if [ -e "$(command -v systemctl)" ]; then
 		SYSDIR=/etc/systemd/system
 		cp ${USER_IDS_DIR}/all-ways-egpu.service ${SYSDIR}
 
@@ -105,18 +105,24 @@ setupAutostart() {
 		fi
 
 	else
-		if [ -e $(command -v rc-update) ]; then
-			SYSDIR=/etc/init.d
+		if [ -e "$(command -v rc-update)" ]; then
+			if [ -e /etc/init.d ]; then
+				SYSDIR=/etc/init.d
+			else
+				SYSDIR=/etc/openrc/init.d
+			fi
 			cp ${USER_IDS_DIR}/all-ways-egpu-openrc ${SYSDIR}
+			chmod +x ${SYSDIR}/all-ways-egpu-openrc
 
 			if [ "$EN_RES" = "y" ]; then
 				echo "Re-enable after login not currently supported without systemd"
 			fi
 			if [ "$EN_RES_2" = "y" ]; then
 				cp ${USER_IDS_DIR}/all-ways-egpu-boot-vga-openrc ${SYSDIR}
-				rc-update add all-ways-egpu-boot-vga-openrc 5
+				chmod +x ${SYSDIR}/all-ways-egpu-boot-vga-openrc
+				rc-update add all-ways-egpu-boot-vga-openrc default
 			else
-				rc-update delete all-ways-egpu-boot-vga-openrc 5
+				rc-update delete all-ways-egpu-boot-vga-openrc default
 			fi
 		fi
 	fi
@@ -124,29 +130,29 @@ setupAutostart() {
 
 manualSetup() {
 	IDS_FILE="${1}"
-	echo "Manual Setup: Enter Bus IDs and drivers in the following example format or enter 'n' to skip.\nxx:xx.x driver"
+	printf "Manual Setup: Enter Bus IDs and drivers in the following example format or enter 'n' to skip.\nxx:xx.x driver\n"
 	while true; do
-		read MAN_ID
+		read -r MAN_ID
 		if [ "$MAN_ID" = "n" ]; then
             break
         fi
-		echo "$MAN_ID" >> $IDS_FILE
+		echo "$MAN_ID" >> "$IDS_FILE"
 		echo "Enter another ID and driver or enter 'n' if done."
 	done
 }
 
 removeIDs() {
 	IDS_FILE="${1}"
-	if [ ! -e $IDS_FILE ]; then
+	if [ ! -e "$IDS_FILE" ]; then
 		echo "Error: No configuration file. Please run setup."
 		return
 	fi
 
-	if [ -e $(command -v systemctl) ]; then
+	if [ -e "$(command -v systemctl)" ]; then
 		START_CMD="systemctl start display-manager.service"
 		STOP_CMD="systemctl stop display-manager.service"
 	else
-		if [ -e $(command -v rc-service) ]; then
+		if [ -e "$(command -v rc-service)" ]; then
 			START_CMD="rc-service display-manager start"
 			STOP_CMD="rc-service display-manager stop"
 		else
@@ -231,7 +237,7 @@ removeBootVGA() {
 uninstall() {
 	removeBootVGA
 	rm -f ${BINDIR}/all-ways-egpu
-	if [ -e $(command -v systemctl) ]; then
+	if [ -e "$(command -v systemctl)" ]; then
 		SYSDIR=/etc/systemd/system
 		systemctl disable all-ways-egpu.service
 		systemctl disable all-ways-egpu-boot-vga.service
@@ -239,10 +245,10 @@ uninstall() {
 		rm -f ${SYSDIR}/all-ways-egpu-user.service
 		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
 	else
-		if [ -e $(command -v rc-update) ]; then
+		if [ -e "$(command -v rc-update)" ]; then
 			SYSDIR=/etc/init.d
-			rc-update delete all-ways-egpu 5
-			rc-update delete all-ways-egpu-boot-vga 5
+			rc-update delete all-ways-egpu default
+			rc-update delete all-ways-egpu-boot-vga default
 			rm -f ${SYSDIR}/all-ways-egpu
 			rm -f ${SYSDIR}/all-ways-egpu-user
 			rm -f ${SYSDIR}/all-ways-egpu-boot-vga
@@ -257,7 +263,7 @@ uninstall() {
 
 help() {
 	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\", \"setup [--all]|[--manual]\" or \"uninstall\"."
-	echo "Example: sudo all-ways-egpu setup\n"
+	printf "Example: sudo all-ways-egpu setup\n\n"
 	echo "Usage:"
 	echo "Method 1:"
 	echo "To force the eGPU as primary, run: sudo all-ways-egpu switch egpu"
@@ -298,13 +304,13 @@ case $1 in
 		echo "Configuration files sucessfully created. See help for usage information"
 		;;
 	configure)
-		if [ -e $(command -v systemctl) ]; then
+		if [ -e "$(command -v systemctl)" ]; then
 			ENABLE_CMD="systemctl enable all-ways-egpu.service"
 			DISABLE_CMD="systemctl disable all-ways-egpu.service"
 		else
-			if [ -e $(command -v rc-service) ]; then
-				ENABLE_CMD="rc-service add all-ways-egpu-openrc 5"
-				DISABLE_CMD="rc-service delete all-ways-egpu-openrc 5"
+			if [ -e "$(command -v rc-service)" ]; then
+				ENABLE_CMD="rc-update add all-ways-egpu-openrc default"
+				DISABLE_CMD="rc-update delete all-ways-egpu-openrc default"
 			else
 				echo "No way to run service files found"
 				exit 1
@@ -417,80 +423,86 @@ case $1 in
 		echo "5. Help"
 		echo "6. Version"
 		echo "7. Uninstall all-ways-eGPU"
-		echo "8. Exit\n"
-		#local MENU_CHOICE
-		read -p "Enter Choice [1-8]: " MENU_CHOICE
+		printf "8. Exit\n\n"
+		echo "Enter Choice [1-8]: "
+		read -r MENU_CHOICE
 		case $MENU_CHOICE in
 			1)
 				setupConfig 0
-				echo "Setup sucessfully. See help for usage information" && sleep 2
+				echo "Setup sucessfully. See help for usage information"
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				;;
 			2)
 				setupConfig 2
-				sleep 2
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				;;
 			3) clear
 				echo "1. Remove iGPU/dGPU now?"
 				echo "2. Remove eGPU now? (May allow hot-unplug)"
-				echo "3. Configure automatic disabling of iGPU/dGPU at boot\n"
-				read -p "Enter Choice [1-3]: " MENU_CHOICE
+				printf "3. Configure automatic disabling of iGPU/dGPU at boot\n\n"
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
 						removeIDs $PCI_DEV
-						sleep 2
 						;;
 					2)
 						removeIDs $USER_IDS_DIR/egpu-bus-ids
-						sleep 2
 						;;
 					3)
-						read -p "Would you like to automatically disable iGPU at boot? [y/N]: " MENU_CHOICE
+						echo "Would you like to automatically disable iGPU at boot? [y/N]: "
+						read -r MENU_CHOICE
 							if [ "${MENU_CHOICE}" = "y" ]; then
 								all-ways-egpu configure egpu
 							else
 								all-ways-egpu configure internal
-							fi 
+							fi
 						;;
 					*)
-						echo "Error: $MENU_CHOICE not a valid option." && sleep 2
+						echo "Error: $MENU_CHOICE not a valid option."
 						;;
 				esac
+				sleep 2
 				;;
 			4) clear
 				echo "1. Set boot-vga Flag to eGPU"
 				echo "2. Set boot-vga Flag to default (iGPU/dGPU)"
-				echo "3. Configure boot-vga Flag at boot\n"
-				read -p "Enter Choice [1-3]: " MENU_CHOICE
+				printf "3. Configure boot-vga Flag at boot\n\n"
+				echo "Enter Choice [1-3]: "
+				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
 						setBootVGA
-						sleep 2
 						;;
 					2)
 						removeBootVGA
-						sleep 2
 						;;
 					3)
 						setupAutostart
-						sleep 2
 						;;
 					*)
-						echo "Error: $MENU_CHOICE not a valid option." && sleep 2
+						echo "Error: $MENU_CHOICE not a valid option."
 						;;
 				esac
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				;;
 			5) help
-				read -p "Press [Enter] to return to menu." MENU_CHOICE
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				;;
 			6) echo "all-ways-egpu version: $VERSION"
-				read -p "Press [Enter] to return to menu." MENU_CHOICE
+				echo "Press [Enter] to return to menu."
+				read -r MENU_CHOICE
 				;;
-			7) read -p "Are you sure you want to uninstall? [y/N]: " MENU_CHOICE
+			7) echo "Are you sure you want to uninstall? [y/N]: "
+				read -r MENU_CHOICE
 				if [ "${MENU_CHOICE}" = "y" ]; then
 					uninstall
 					echo "all-ways-eGPU uninstalled" && sleep 1
 				fi
-				exit
 				;;
 			8) exit
 				;;
