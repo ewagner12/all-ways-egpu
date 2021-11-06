@@ -85,7 +85,7 @@ setupAutostart() {
 	echo " Recommended if using Method 2: Attempt to set boot_vga flag at startup? [y/N]"
 	read -r EN_RES_2
 		
-	if [ -e "$(command -v systemctl)" ]; then
+	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		cp ${USER_IDS_DIR}/all-ways-egpu.service ${SYSDIR}
 
@@ -105,7 +105,7 @@ setupAutostart() {
 		fi
 
 	else
-		if [ -e "$(command -v rc-update)" ]; then
+		if [ "$SERV_MAN" = "openrc" ]; then
 			if [ -e /etc/init.d ]; then
 				SYSDIR=/etc/init.d
 			else
@@ -148,11 +148,11 @@ removeIDs() {
 		return
 	fi
 
-	if [ -e "$(command -v systemctl)" ]; then
+	if ["$SERV_MAN" = "systemd" ]; then
 		START_CMD="systemctl start display-manager.service"
 		STOP_CMD="systemctl stop display-manager.service"
 	else
-		if [ -e "$(command -v rc-service)" ]; then
+		if [ "$SERV_MAN" = "openrc" ]; then
 			START_CMD="rc-service display-manager start"
 			STOP_CMD="rc-service display-manager stop"
 		else
@@ -237,7 +237,7 @@ removeBootVGA() {
 uninstall() {
 	removeBootVGA
 	rm -f ${BINDIR}/all-ways-egpu
-	if [ -e "$(command -v systemctl)" ]; then
+	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		systemctl disable all-ways-egpu.service
 		systemctl disable all-ways-egpu-boot-vga.service
@@ -245,7 +245,7 @@ uninstall() {
 		rm -f ${SYSDIR}/all-ways-egpu-user.service
 		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
 	else
-		if [ -e "$(command -v rc-update)" ]; then
+		if [ "$SERV_MAN" = "openrc" ]; then
 			SYSDIR=/etc/init.d
 			rc-update delete all-ways-egpu default
 			rc-update delete all-ways-egpu-boot-vga default
@@ -284,6 +284,14 @@ if [ "$(whoami)" != "root" ]; then
 	exit $?
 fi
 
+if [ -e "$(command -v systemctl)" ]; then
+	SERV_MAN="systemd"
+else
+	if [ -e "$(command -v rc-status)" ]; then
+		SERV_MAN="openrc"
+	fi
+fi
+
 case $1 in
 	-h|help)
 	help
@@ -304,11 +312,11 @@ case $1 in
 		echo "Configuration files sucessfully created. See help for usage information"
 		;;
 	configure)
-		if [ -e "$(command -v systemctl)" ]; then
+		if [ "$SERV_MAN" = "systemd" ]; then
 			ENABLE_CMD="systemctl enable all-ways-egpu.service"
 			DISABLE_CMD="systemctl disable all-ways-egpu.service"
 		else
-			if [ -e "$(command -v rc-service)" ]; then
+			if [ "$SERV_MAN" = "openrc" ]; then
 				ENABLE_CMD="rc-update add all-ways-egpu-openrc default"
 				DISABLE_CMD="rc-update delete all-ways-egpu-openrc default"
 			else
@@ -501,7 +509,8 @@ case $1 in
 				read -r MENU_CHOICE
 				if [ "${MENU_CHOICE}" = "y" ]; then
 					uninstall
-					echo "all-ways-eGPU uninstalled" && sleep 1
+					echo "all-ways-eGPU uninstalled" && sleep 2
+					exit
 				fi
 				;;
 			8) exit
