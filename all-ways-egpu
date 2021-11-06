@@ -442,7 +442,7 @@ case $1 in
 				echo "1. Remove iGPU/dGPU now?"
 				echo "2. Remove eGPU now? (May allow hot-unplug)"
 				printf "3. Configure automatic disabling of iGPU/dGPU at boot\n\n"
-				echo "Press [Enter] to return to menu."
+				echo "Enter Choice [1-3]: "
 				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
