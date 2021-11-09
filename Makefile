@@ -11,6 +11,7 @@ install:
 	cp all-ways-egpu.service ${DESTDIR}${CONFDIR}
 	cp all-ways-egpu-user.service ${DESTDIR}${CONFDIR}
 	cp all-ways-egpu-boot-vga.service ${DESTDIR}${CONFDIR}
+	cp all-ways-egpu-shutdown.service ${DESTDIR}${CONFDIR}
 	cp all-ways-egpu-openrc ${DESTDIR}${CONFDIR}
 	cp all-ways-egpu-boot-vga-openrc ${DESTDIR}${CONFDIR}
 	cp all-ways-egpu-reenable.desktop ${DESTDIR}${CONFDIR}

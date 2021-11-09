@@ -3,7 +3,7 @@
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
-VERSION=0.31.0
+VERSION=0.32.0
 
 setupConfig() {
 	if [ -e $PCI_DEV ] || [ -e $USER_IDS_DIR/egpu-bus-ids ]; then
@@ -84,7 +84,7 @@ setupAutostart() {
 
 	echo " Recommended if using Method 2: Attempt to set boot_vga flag at startup? [y/N]"
 	read -r EN_RES_2
-		
+
 	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		cp ${USER_IDS_DIR}/all-ways-egpu.service ${SYSDIR}
@@ -99,9 +99,12 @@ setupAutostart() {
 		fi
 		if [ "$EN_RES_2" = "y" ]; then
 			cp ${USER_IDS_DIR}/all-ways-egpu-boot-vga.service ${SYSDIR}
+			cp ${USER_IDS_DIR}/all-ways-egpu-shutdown.service ${SYSDIR}
 			systemctl enable all-ways-egpu-boot-vga.service
+			systemctl enable all-ways-egpu-shutdown.service
 		else
 			systemctl disable all-ways-egpu-boot-vga.service
+			systemctl disable all-ways-egpu-shutdown.service
 		fi
 
 	else
@@ -193,10 +196,10 @@ setBootVGA() {
 		echo "Error: No configuration file. Please run setup."
 		return
 	fi
-	
+
 	if [ -e $USER_IDS_DIR/bind-paths ]; then
-		echo "Error: Bind mounts already set. Use "sudo all-ways-egpu set-boot-vga internal" or reboot to reset mounts"
-		return
+		echo "Existing bind mounts recorded. Removing..."
+		removeBootVGA
 	fi
 
 	for CARD in $(lspci -d ::0300 | cut -c -7); do
@@ -241,9 +244,11 @@ uninstall() {
 		SYSDIR=/etc/systemd/system
 		systemctl disable all-ways-egpu.service
 		systemctl disable all-ways-egpu-boot-vga.service
+		systemctl disable all-ways-egpu-shutdown.service
 		rm -f ${SYSDIR}/all-ways-egpu.service
 		rm -f ${SYSDIR}/all-ways-egpu-user.service
 		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
+		rm -f ${SYSDIR}/all-ways-egpu-shutdown.service
 	else
 		if [ "$SERV_MAN" = "openrc" ]; then
 			SYSDIR=/etc/init.d
@@ -275,10 +280,11 @@ help() {
 	echo "Method 2:"
 	echo "To only switch the boot_vga flag, run: sudo all-ways-egpu set-boot-vga egpu"
 	echo "This may be a useful method for enabling the eGPU in certain Wayland desktops and may work better than Method 1 for some setups"
+    printf "\nIf using the menu system, it is recommended to first setup system with option 1, then use option 4 to switch to eGPU.\n"
 }
 
 # check if the script is run as root
-if [ "$(whoami)" != "root" ]; then 
+if [ "$(whoami)" != "root" ]; then
 	echo "You need to run the script with root privileges. Attempting to raise via sudo:"
 	sudo "${0}" "$@"
 	exit $?
@@ -421,7 +427,7 @@ case $1 in
 	#Menu
 	while true; do
 		clear
-		echo "-------------------------"	
+		echo "-------------------------"
 		echo " All-Ways-eGPU Main Menu"
 		echo "-------------------------"
 		echo "1. Guided Setup"

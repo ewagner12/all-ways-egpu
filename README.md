@@ -34,7 +34,9 @@ all-ways-egpu uninstall
 
 ## Usage:
 
-To setup the script based on your hardware:
+As of version 0.30+ all functions can also be accessed through a menu system by simply clicking on the icon in your application menu or using the command `all-ways-egpu`. It is recommended to setup using option 1 and then switch to the eGPU using option 4 (Method 2).
+
+If you want to skip the menu system, the following terminal commands can also be used. To setup the script based on your hardware:
 ```
 all-ways-egpu setup
 ```
@@ -57,8 +59,6 @@ all-ways-egpu set-boot-vga egpu
 ```
 
 additional info can be found using the help flag.
-
-As of version 0.30 all functions can also be accessed through a menu system by simply using `all-ways-egpu`.
 
 ## Extra Steps:
 
@@ -104,8 +104,8 @@ ResultActive=yes
 
 - Note: the OpenRC calls currently assume the display manager is started with an init script called "display-manager". On some distros, xdm or a script with some other name is used. In these cases, I recommend linking that script with the following command: `ln -s /etc/init.d/xdm /etc/init.d/display-manager`
 
-- Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail due to the virtual console switching. It is currently recommended to disable this.
+- Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail when using Method 1 due to the virtual console switching. It is currently recommended to disable this.
 
-- I have also only tested with AMD eGPU + Intel iGPU so far. Nvidia testing is still to be done. Specifically, proprietery Nvidia drivers may not work yet.
+- If you have an nvidia card, you must choose "n" to the option "Attempt to re-enable these iGPU/initially disabled devices after boot". Otherwise, switching might result in a black screen. Once this option is disabled, switching should work normally.
 
 - PR's for any other issues welcome :)
