@@ -102,7 +102,7 @@ ResultActive=yes
 
 - This script is still in the testing phase for a variety of desktops and distros. If you have issues be sure to include your specific desktop configuration.
 
-- Note: the OpenRC calls currently assume the display manager is started with an init script called "display-manager". On some distros, xdm or a script with some other name is used. In these cases, I recommend linking that script with the following command: `ln -s /etc/init.d/xdm /etc/init.d/display-manager`
+- Note: the OpenRC calls currently assume the display manager is started with an init script called "display-manager". On some distros, xdm or a script with some other name is used. In these cases, I recommend linking that script with the following command: `ln -s /etc/init.d/xdm /etc/init.d/display-manager`. Also recommended to add the linked service to the default runlevel with the command: `rc-update add display-manager default`
 
 - Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail when using Method 1 due to the virtual console switching. It is currently recommended to disable this.
 
