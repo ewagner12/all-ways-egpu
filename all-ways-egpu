@@ -251,12 +251,15 @@ uninstall() {
 		rm -f ${SYSDIR}/all-ways-egpu-shutdown.service
 	else
 		if [ "$SERV_MAN" = "openrc" ]; then
-			SYSDIR=/etc/init.d
-			rc-update delete all-ways-egpu default
-			rc-update delete all-ways-egpu-boot-vga default
-			rm -f ${SYSDIR}/all-ways-egpu
-			rm -f ${SYSDIR}/all-ways-egpu-user
-			rm -f ${SYSDIR}/all-ways-egpu-boot-vga
+			if [ -e /etc/init.d ]; then
+				SYSDIR=/etc/init.d
+			else
+				SYSDIR=/etc/openrc/init.d
+			fi
+			rc-update delete all-ways-egpu-openrc default
+			rc-update delete all-ways-egpu-boot-vga-openrc default
+			rm -f ${SYSDIR}/all-ways-egpu-openrc
+			rm -f ${SYSDIR}/all-ways-egpu-boot-vga-openrc
 		else
 			echo "Service Files not found, not removed"
 		fi
