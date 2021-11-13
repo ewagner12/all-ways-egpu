@@ -3,7 +3,7 @@
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
-VERSION=0.32.0
+VERSION=0.32.1
 
 setupConfig() {
 	if [ -e $PCI_DEV ] || [ -e $USER_IDS_DIR/egpu-bus-ids ]; then
@@ -151,7 +151,7 @@ removeIDs() {
 		return
 	fi
 
-	if ["$SERV_MAN" = "systemd" ]; then
+	if [ "$SERV_MAN" = "systemd" ]; then
 		START_CMD="systemctl start display-manager.service"
 		STOP_CMD="systemctl stop display-manager.service"
 	else
@@ -192,7 +192,7 @@ addInternal() {
 }
 
 setBootVGA() {
-	if [ ! -e $PCI_DEV ]; then
+	if [ ! -e $USER_IDS_DIR/egpu-bus-ids ]; then
 		echo "Error: No configuration file. Please run setup."
 		return
 	fi
@@ -202,25 +202,30 @@ setBootVGA() {
 		removeBootVGA
 	fi
 
+	EGPU_DETECT=0
+
 	for CARD in $(lspci -d ::0300 | cut -c -7); do
-		if grep -q "$CARD" < $USER_IDS_DIR/egpu-bus-ids; then
-			set -- /sys/class/drm/card[0-9]/device
-			for BOOT_VGA_PATH in "$@"; do
+		set -- /sys/bus/pci/devices/0000:"$CARD"/drm/card*/device
+		for BOOT_VGA_PATH in "$@"; do
+			if grep -q "$CARD" < $USER_IDS_DIR/egpu-bus-ids; then
+				echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
+				mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
+				EGPU_DETECT=1
+			else
 				if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
 					echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
 					mount -n --bind -o ro $USER_IDS_DIR/0 "$BOOT_VGA_PATH"/boot_vga
-				else
-					if grep -q "$(find -L "${BOOT_VGA_PATH}"/driver -maxdepth 1 -name '[0-9a-f]*:[0-9a-f]*:[0-9a-f]*' | tail -c 8)" < $USER_IDS_DIR/egpu-bus-ids; then
-						echo "$BOOT_VGA_PATH"  | tee -a $USER_IDS_DIR/bind-paths
-						mount -n --bind -o ro $USER_IDS_DIR/1  "$BOOT_VGA_PATH"/boot_vga
-					fi
 				fi
-			done
-			echo "Bind mounts set. Restart Display Manager for changes to take effect."
-			return
-		fi
+			fi
+		done
 	done
-	echo "No eGPU detected."
+
+	if [ $EGPU_DETECT -eq 1 ]; then
+		echo "Bind mounts set. Restart Display Manager for changes to take effect."
+	else
+		echo "No eGPU detected."
+		removeBootVGA
+	fi
 }
 
 removeBootVGA() {
