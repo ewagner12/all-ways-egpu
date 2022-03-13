@@ -32,7 +32,7 @@ cd all-ways-egpu
 
 Install:
 ```
-make install
+chmod +x install.sh; sudo ./install.sh install
 ```
 
 ## Uninstallation:
