@@ -378,6 +378,9 @@ case $1 in
 		echo "Configuration files sucessfully created. See help for usage information"
 		;;
 	configure)
+		if [ ! -e $CONFDIR/all-ways-egpu.service ]; then
+			return
+		fi
 		if [ "$SERV_MAN" = "systemd" ]; then
 			ENABLE_CMD="systemctl enable all-ways-egpu.service"
 			DISABLE_CMD="systemctl disable all-ways-egpu.service"
