@@ -2,10 +2,10 @@
 Name=All-Ways-eGPU
 GenericName=Wayland-eGPU-script
 Comment=Script for setting eGPU as primary for Wayland desktops
-Exec=/usr/bin/all-ways-egpu
+Exec=all-ways-egpu
 Terminal=true
 Type=Application
-Version=0.32.1
+Version=0.40.0
 Categories=System;Settings;Utility;
 Keywords=system;hardware;
 

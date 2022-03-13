@@ -4,7 +4,7 @@ After=user@1000.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/all-ways-egpu switch internal
+ExecStart=all-ways-egpu switch internal
 
 [Install]
 WantedBy=user@1000.service

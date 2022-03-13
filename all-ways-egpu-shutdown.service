@@ -5,7 +5,7 @@ Before=halt.target shutdown.target reboot.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/all-ways-egpu set-boot-vga internal
+ExecStart=all-ways-egpu set-boot-vga internal
 
 [Install]
 WantedBy=halt.target shutdown.target reboot.target

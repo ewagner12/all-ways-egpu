@@ -4,7 +4,7 @@ Before=display-manager.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/all-ways-egpu boot
+ExecStart=all-ways-egpu boot
 
 [Install]
 WantedBy=graphical.target

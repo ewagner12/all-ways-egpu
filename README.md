@@ -8,8 +8,16 @@ Note this script is not designed to replace existing solutions such as [gswitch]
 Download and install the latest release using the following one line command:
 
 ```
-cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; sudo make install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
+cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
 ```
+
+### Steam Deck/User Installation:
+This following installation method is specifically for those using Steam Deck/SteamOS 3.0 or any other distro (such as Fedora Silverblue) where the system files are read-only:
+
+```
+cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
+```
+Note that running the command above adds ~/bin to your path in Bash. If using a different shell be sure to add ~/bin to your path in your shell. Automatic switching at bootup is not available with this type of installation so the script must be run by the user after login to switch to the eGPU (see Usage section below).
 
 ### Git
 Clone the repo to get the latest from github:
@@ -81,7 +89,7 @@ polkit.addRule(function(action, subject) {
 });
 ```
 
-For Polkit verison < 0.106:
+For Polkit version < 0.106:
 
 Create file: */etc/polkit-1/localauthority/50-local.d/57-manage-egpu.pkla*
 
@@ -107,5 +115,7 @@ ResultActive=yes
 - Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail when using Method 1 due to the virtual console switching. It is currently recommended to disable this.
 
 - If you have an nvidia card, you must choose "n" to the option "Attempt to re-enable these iGPU/initially disabled devices after boot". Otherwise, switching might result in a black screen. Once this option is disabled, switching should work normally.
+
+- On Steam Deck/SteamOS the script requires root (sudo) privileges, but does not require setting the file system to read-write if installed in the Steam Deck/User Installation mode.
 
 - PR's for any other issues welcome :)
