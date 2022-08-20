@@ -4,7 +4,7 @@ BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
 CONFDIR=/etc/all-ways-egpu
-VERSION=0.42.0
+VERSION=0.42.1
 
 setupConfig() {
 	if [ "${2}" -eq 1 ]; then
@@ -173,10 +173,12 @@ removeIDs() {
 	if [ "$SERV_MAN" = "systemd" ]; then
 		START_CMD="systemctl start display-manager.service"
 		STOP_CMD="systemctl stop display-manager.service"
+		ACT_CMD="systemctl status display-manager"
 	else
 		if [ "$SERV_MAN" = "openrc" ]; then
 			START_CMD="rc-service display-manager start"
 			STOP_CMD="rc-service display-manager stop"
+			ACT_CMD="rc-service display-manager status"
 		else
 			echo "No way to restart display-manager found"
 			return
@@ -184,7 +186,9 @@ removeIDs() {
 	fi
 
 	( trap '' HUP TERM
-		sleep 1
+		while $ACT_CMD | grep -q "running"; do
+			sleep 1
+		done
 
 		set -- /sys/class/vtconsole/vtcon*/bind
 		for VT in "$@"; do
@@ -341,10 +345,10 @@ status() {
 			systemctl status all-ways-egpu-boot-vga.service
 		else
 			if [ "$SERV_MAN" = "openrc" ]; then
-				if [ "$(rc-status default | grep -c all-ways-egpu-openrc)" -gt 0 ]; then
+				if rc-status default | grep -q all-ways-egpu-openrc; then
 					echo "Method 1 auto switch active at startup service"
 				fi
-				if [ "$(rc-status default | grep -c all-ways-egpu-boot-vga-openrc)" -gt 0 ]; then
+				if rc-status default | grep -q all-ways-egpu-boot-vga-openrc; then
 					echo "Method 2 auto switch active at startup service"
 				fi
 			fi
