@@ -330,17 +330,23 @@ status() {
 		fi
 		if [ "$SERV_MAN" = "systemd" ]; then
 			SYSDIR=/etc/systemd/system
+			for UP in /home/*/.config/autostart; do
+				if [ -e "$UP"/all-ways-egpu-reenable.desktop ]; then
+					echo "Auto re-enabling Method 1 Bus IDs after login found in ""$UP"
+				fi
+			done
+			echo "Method 1 auto switch at startup service"
 			systemctl status all-ways-egpu.service
+			eco "Method 2 auto switch at startup service"
 			systemctl status all-ways-egpu-boot-vga.service
 		else
 			if [ "$SERV_MAN" = "openrc" ]; then
-				if [ -e /etc/init.d ]; then
-					SYSDIR=/etc/init.d
-				else
-					SYSDIR=/etc/openrc/init.d
+				if [ "$(rc-status default | grep -c all-ways-egpu-openrc)" -gt 0 ]; then
+					echo "Method 1 auto switch active at startup service"
 				fi
-			rc-service all-ways-egpu-openrc status
-			rc-service all-ways-egpu-boot-vga-openrc status
+				if [ "$(rc-status default | grep -c all-ways-egpu-boot-vga-openrc)" -gt 0 ]; then
+					echo "Method 2 auto switch active at startup service"
+				fi
 			fi
 		fi
 	fi
