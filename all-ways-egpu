@@ -337,7 +337,7 @@ status() {
 			done
 			echo "Method 1 auto switch at startup service"
 			systemctl status all-ways-egpu.service
-			eco "Method 2 auto switch at startup service"
+			echo "Method 2 auto switch at startup service"
 			systemctl status all-ways-egpu-boot-vga.service
 		else
 			if [ "$SERV_MAN" = "openrc" ]; then
