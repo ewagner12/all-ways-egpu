@@ -118,4 +118,6 @@ ResultActive=yes
 
 - On Steam Deck/SteamOS the script requires root (sudo) privileges, but does not require setting the file system to read-write if installed in the Steam Deck/User Installation mode.
 
+- Restarting the display manager when using GNOME Wayland with fractional scaling may lead to a laggy desktop. In this case a manual logout and login is recommended to avoid this.
+
 - PR's for any other issues welcome :)
