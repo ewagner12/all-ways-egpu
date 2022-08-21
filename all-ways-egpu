@@ -107,6 +107,8 @@ setupAutostart() {
 	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		cp $CONFDIR/all-ways-egpu.service ${SYSDIR}
+		cp $CONFDIR/all-ways-egpu-boot-vga.service ${SYSDIR}
+		cp $CONFDIR/all-ways-egpu-shutdown.service ${SYSDIR}
 
 		if [ "$EN_RES" = "y" ]; then
 			cp $CONFDIR/all-ways-egpu-user.service ${SYSDIR}
@@ -117,8 +119,6 @@ setupAutostart() {
 			rm -f /home/*/.config/autostart/all-ways-egpu-reenable.desktop
 		fi
 		if [ "$EN_RES_2" = "y" ]; then
-			cp $CONFDIR/all-ways-egpu-boot-vga.service ${SYSDIR}
-			cp $CONFDIR/all-ways-egpu-shutdown.service ${SYSDIR}
 			systemctl enable all-ways-egpu-boot-vga.service
 			systemctl enable all-ways-egpu-shutdown.service
 		else
