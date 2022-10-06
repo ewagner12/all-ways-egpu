@@ -227,7 +227,7 @@ setBootVGA() {
 	EGPU_DETECT=0
 
 	for CARD in $(lspci -d ::0300 | cut -c -7); do
-		set -- /sys/bus/pci/devices/0000:"$CARD"/drm/card*/device
+		set -- /sys/bus/pci/devices/0000:"$CARD"
 		for BOOT_VGA_PATH in "$@"; do
 			if grep -q "$CARD" < "$USER_IDS_DIR"/egpu-bus-ids; then
 				echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
