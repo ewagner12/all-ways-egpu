@@ -4,7 +4,7 @@ BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 PCI_DEV=$USER_IDS_DIR/user-bus-ids
 CONFDIR=/etc/all-ways-egpu
-VERSION=0.42.1
+VERSION=0.42.2
 
 setupConfig() {
 	if [ "${2}" -eq 1 ]; then
@@ -41,10 +41,12 @@ setupConfig() {
 
 	printf "To force the eGPU as primary, we need to know which card is the eGPU to be used as primary.\n\n"
 
+	PCI_DRIVERS=$(lspci -k)
+
 	while read -r CARDS <&3; do
 		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
 		#DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
-		DEV_DRIVERS=$(lspci -k | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
+		DEV_DRIVERS=$(echo "$PCI_DRIVERS" | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
 		lspci | grep "$PCI_BUS"
 		printf "Is this the eGPU to be used as primary? [y/N]\n"
 		read -r DIS_RES
@@ -67,7 +69,7 @@ setupConfig() {
 	while read -r CARDS <&3; do
 		PCI_BUS=$(echo "$CARDS" | awk -F' ' '{print $1}')
 		#DEV_IDS=$(echo "$CARDS" | awk -F' ' '{print $3}')
-		DEV_DRIVERS=$(lspci -k | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
+		DEV_DRIVERS=$(echo "$PCI_DRIVERS" | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
 		lspci | grep "$PCI_BUS"
 		printf "Would you like to disable this device during boot [y/N]\n"
 		read -r DIS_RES
