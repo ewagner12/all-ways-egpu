@@ -49,7 +49,7 @@ If you want to skip the menu system, the following terminal commands can also be
 all-ways-egpu setup
 ```
 
-### Method 1: Force iGPU off
+### Method 1: Force iGPU off (Legacy/Alternate Method)
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
 ```
 all-ways-egpu configure egpu
@@ -60,7 +60,7 @@ To disable forcing the chosen iGPU devices off
 all-ways-egpu configure internal
 ```
 
-### Method 2: Switch boot_vga
+### Method 2: Switch boot_vga (Recommended Method)
 This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin seem to work with this method in my testing.
 ```
 all-ways-egpu set-boot-vga egpu

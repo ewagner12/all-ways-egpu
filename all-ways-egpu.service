@@ -1,6 +1,7 @@
 [Unit]
 Description=Configure eGPU as primary under Wayland desktops
 Before=display-manager.service
+After=bolt.service
 
 [Service]
 Type=simple
