@@ -203,11 +203,19 @@ removeIDs() {
 			echo 0 > "$VT"
 		done
 		echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/unbind
+		echo "vesa-framebuffer.0" > /sys/bus/platform/drivers/vesa-framebuffer/unbind
 
+		# Could be 2 if 1 is too fast
+		sleep 1
 		while read -r LINE; do
 			BUS=$(echo "$LINE"  | awk '{ print $1 }')
 			DRIVER=$(echo "$LINE" | awk '{ print $2 }')
 
+			if [ "$DRIVER" = "nvidia" ]; then
+				for N in nvidia_uvm nvidia_drm nvidia_modeset nvidia; do
+					modprobe -r "$N"
+				done
+			fi
 			echo "$BUS" > /sys/bus/pci/drivers/"$DRIVER"/unbind
 			echo 1 > /sys/bus/pci/devices/"$BUS"/remove
 		done < "$IDS_FILE"
@@ -216,6 +224,7 @@ removeIDs() {
 			echo 1 > "$VT"
 		done
 		echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/bind
+		echo "vesa-framebuffer.0" > /sys/bus/platform/drivers/vesa-framebuffer/bind
 		$START_CMD ) &
 	$STOP_CMD
 }
@@ -225,7 +234,8 @@ addInternal() {
 }
 
 setBootVGA() {
-	if [ ! -e "$USER_IDS_DIR"/egpu-bus-ids ]; then
+	IDS_FILE="${1}"
+	if [ ! -e "$IDS_FILE" ]; then
 		echo "Error: No configuration file. Please run setup."
 		return
 	fi
@@ -237,7 +247,7 @@ setBootVGA() {
 	for CARD in $(lspci -D -d ::0300 -n | awk -F' ' '{print $1}'); do
 		set -- /sys/bus/pci/devices/"$CARD"
 		for BOOT_VGA_PATH in "$@"; do
-			if grep -q "$CARD" < "$USER_IDS_DIR"/egpu-bus-ids; then
+			if grep -q "$CARD" < "$IDS_FILE"; then
 				echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
 				mount -n --bind -o ro "$USER_IDS_DIR"/1  "$BOOT_VGA_PATH"/boot_vga
 				EGPU_DETECT=1
@@ -367,7 +377,7 @@ status() {
 
 help() {
 	clear
-	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal\", \"boot\", \"setup [--all]|[--manual]\" or \"uninstall\"."
+	echo "Valid arguments are \"configure egpu|internal\", \"switch egpu|internal\", \"set-boot-vga egpu|internal|force-internal\", \"boot\", \"setup [--all]|[--manual]\" or \"uninstall\"."
 	printf "Example: sudo all-ways-egpu setup\n\n"
 	echo "Usage:"
 	echo "Method 1:"
@@ -423,17 +433,21 @@ menu() {
 			4) clear
 				echo "1. Set boot-vga Flag to eGPU"
 				echo "2. Set boot-vga Flag to default (iGPU/dGPU)"
-				printf "3. Configure boot-vga Flag at boot\n\n"
-				echo "Enter Choice [1-3]: "
+				echo "3. Force boot-vga to iGPU (even if it's not default)"
+				printf "4. Configure boot-vga Flag at boot\n\n"
+				echo "Enter Choice [1-4]: "
 				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
-						setBootVGA
+						setBootVGA "$USER_IDS_DIR"/egpu-bus-ids
 						;;
 					2)
 						removeBootVGA
 						;;
 					3)
+						setBootVGA "$PCI_DEV"
+						;;
+					4)
 						setupAutostart ${user_mode}
 						;;
 					*)
@@ -593,7 +607,8 @@ case $1 in
 		;;
 	configure)
 		if [ ! -e $CONFDIR/all-ways-egpu.service ]; then
-			return
+			echo "No service files found"
+			exit 1
 		fi
 		if [ "$SERV_MAN" = "systemd" ]; then
 			ENABLE_CMD="systemctl enable all-ways-egpu.service"
@@ -658,18 +673,27 @@ case $1 in
 			else
 				if [ "${option}" = "internal" ]; then
 					cardSelect=2
+				else
+					if [ "${option}" = "force-internal" ]; then
+						cardSelect=3
+					fi
 				fi
 			fi
 		done
-		if [ ${cardSelect} -eq 2 ]; then
-			removeBootVGA
-			exit
-		else
-			if [ ${cardSelect} -eq 1 ]; then
-				setBootVGA
+		case $cardSelect in
+			1)
+				setBootVGA "$USER_IDS_DIR"/egpu-bus-ids
 				exit
-			fi
-		fi
+				;;
+			2)
+				removeBootVGA
+				exit
+				;;
+			3)
+				setBootVGA "$PCI_DEV"
+				exit
+				;;
+		esac
 		echo "Specifiy 'egpu' or 'internal' to be switched to"
 		;;
 	boot)
