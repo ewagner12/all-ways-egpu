@@ -311,7 +311,7 @@ setCompVars() {
 			BUS=$(echo "$LINE"  | awk '{ print $1 }')
 			if udevadm info -n "$C_NAME" -q path | grep -q "$BUS"/drm; then
 				GPU_P="$DELIM""$GPU_P""$C_NAME"
-				echo "ENV{DEVNAME}==""$C_NAME"", TAG+=\"mutter-device-preferred-primary\"" > "$UDEV_RULE_PATH"
+				echo 'ENV{DEVNAME}=="'"$C_NAME"'", TAG+="mutter-device-preferred-primary"' > "$UDEV_RULE_PATH"
 				P_NUM=$((P_NUM + 1))
 				break
 			fi
@@ -428,17 +428,19 @@ status() {
 			echo "Method 2, 3 setup with following Bus IDs"
 			cat "$EGPU_IDS"
 			while read -r LINE; do
-			BUS=$(echo "$LINE"  | awk '{ print $1 }')
-			if [ -e /sys/bus/pci/devices/"$BUS"/boot_vga ]; then
-				if [ "$(cat /sys/bus/pci/devices/"$BUS"/boot_vga)" -eq 1 ]; then
-					echo "$BUS"" eGPU currently active as primary with Method 2"
-				else
-					echo "$BUS"" eGPU connected, not set as primary with Method 2"
-					if [ -e "$KWIN_PATH" ] || [ -e "$SWAY_PATH" ]; then
-						echo "$BUS"" eGPU currently active as primary with Method 3"
+				BUS=$(echo "$LINE"  | awk '{ print $1 }')
+				if [ -e /sys/bus/pci/devices/"$BUS"/boot_vga ]; then
+					if [ "$(cat /sys/bus/pci/devices/"$BUS"/boot_vga)" -eq 1 ]; then
+						echo "$BUS"" eGPU currently active as primary with Method 2"
+					else
+						echo "$BUS"" eGPU connected, not set as primary with Method 2"
 					fi
 				fi
-			fi
+				for C_NAME in /dev/dri/card*; do
+					if udevadm info -n "$C_NAME" | grep -q -e "TAGS.*mutter-device-preferred-primary" && udevadm info -n "$C_NAME" -q path | grep -q "$BUS"/drm; then
+						echo "$BUS"" eGPU currently set as primary with Method 3"
+					fi
+				done
 			done < "$EGPU_IDS"
 		fi
 		if [ "$SERV_MAN" = "systemd" ]; then
