@@ -5,7 +5,7 @@ Comment=Script for setting eGPU as primary for Wayland desktops
 Exec=all-ways-egpu
 Terminal=true
 Type=Application
-Version=0.50.0
+Version=0.51.0
 Categories=System;Settings;Utility;
 Keywords=system;hardware;
 

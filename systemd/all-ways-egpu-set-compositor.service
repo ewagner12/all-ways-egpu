@@ -1,0 +1,10 @@
+[Unit]
+Description=Configure eGPU as primary using compositor variables under Wayland desktops
+After=display-manager.service
+
+[Service]
+Type=simple
+ExecStart=all-ways-egpu set-compositor-primary egpu
+
+[Install]
+WantedBy=graphical.target

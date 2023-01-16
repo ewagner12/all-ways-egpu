@@ -42,7 +42,7 @@ all-ways-egpu uninstall
 
 ## Usage:
 
-As of version 0.30+ all functions can also be accessed through a menu system by simply clicking on the icon in your application menu or using the command `all-ways-egpu`. It is recommended to setup using option 1 and then switch to the eGPU using option 4 (Method 2).
+As of version 0.30+ all functions can also be accessed through a menu system by simply clicking on the icon in your application menu or using the command `all-ways-egpu`. It is recommended to setup using option 1 and then switch to the eGPU using option 4 (Method 2). You may try out each of the methods to see which one works best for you.
 
 If you want to skip the menu system, the following terminal commands can also be used. To setup the script based on your hardware:
 ```
@@ -67,6 +67,14 @@ all-ways-egpu set-boot-vga egpu
 ```
 
 additional info can be found using the help flag.
+
+### Method 3: Set Compositor Variables (Desktop Specific)
+This method sets the variables specifically used by the compositors mutter (GNOME), KWin (KDE Plasma), and wlroots (Sway and others). This hints to these desktops to use the eGPU as primary. This only works on those compositors specifically and may not always force applications to use the eGPU. This method may be combined with Method 2.
+
+Currently this method is most useful for GNOME when Method 2 doesn't work.
+```
+all-ways-egpu set-compositor-primary egpu
+```
 
 ## Extra Steps:
 

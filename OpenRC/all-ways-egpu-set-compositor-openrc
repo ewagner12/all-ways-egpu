@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+
+command="all-ways-egpu"
+command_args="set-compositor-primary egpu"
+pidfile="/var/run/${RC_SVCNAME}.pid"
+name="All-Ways-eGPU Set Compositor Daemon"
+
+description="This daemon is used by the all-ways-egpu script to automatically set the compositor variables at startup"
+
+depends() {
+    after display-manager
+}
