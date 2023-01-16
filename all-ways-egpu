@@ -5,7 +5,7 @@ BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
 ENV_PATH=/etc/environment.d
-# Note the following file locations are used by the script and may be overwitten if they already exist
+# Note the following file locations are used by the script and may be overwritten if they already exist
 PCI_DEV="$USER_IDS_DIR"/user-bus-ids
 EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
 UDEV_RULE_PATH="/etc/udev/rules.d/61-mutter-primary-gpu.rules"
@@ -498,7 +498,7 @@ menu() {
 		case "$1" in
 			1)
 				setupConfig 0 ${user_mode}
-				echo "Setup sucessfully. See help for usage information"
+				echo "Setup successfully. See help for usage information"
 				;;
 			2)
 				setupConfig 2 ${user_mode}
@@ -692,7 +692,7 @@ case $1 in
 		done
 		setupConfig ${override} ${user_mode}
 
-		echo "Configuration files sucessfully created. See help for usage information"
+		echo "Configuration files successfully created. See help for usage information"
 		;;
 	configure)
 		if [ ! -e $CONFDIR/all-ways-egpu.service ]; then
@@ -722,7 +722,7 @@ case $1 in
 				fi
 			fi
 		done
-		echo "Specifiy 'egpu' or 'internal' to be configured to be used at boot"
+		echo "Specify 'egpu' or 'internal' to be configured to be used at boot"
 		;;
 	switch)
 		cardSelect=0
@@ -750,7 +750,7 @@ case $1 in
 				removeIDs "$EGPU_IDS"
 				;;
 			*)
-				echo "Specifiy 'egpu' or 'internal' to be switched to"
+				echo "Specify 'egpu' or 'internal' to be switched to"
 				;;
 		esac
 		;;
@@ -783,7 +783,7 @@ case $1 in
 				exit
 				;;
 		esac
-		echo "Specifiy 'egpu' or 'internal' to be switched to"
+		echo "Specify 'egpu' or 'internal' to be switched to"
 		;;
 	set-compositor-primary)
 		cardSelect=0
@@ -804,7 +804,7 @@ case $1 in
 				setCompVars "$PCI_DEV"
 				;;
 			*)
-				echo "Specifiy 'egpu' or 'internal' to be switched to"
+				echo "Specify 'egpu' or 'internal' to be switched to"
 				;;
 		esac
 		;;
