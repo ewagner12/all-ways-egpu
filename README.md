@@ -128,4 +128,6 @@ ResultActive=yes
 
 - Restarting the display manager when using GNOME Wayland with fractional scaling may lead to a laggy desktop. In this case a manual logout and login is recommended to avoid this.
 
+- If seeing poor performance with an AMD GPU, see the performance fixes noted [here](https://github.com/ewagner12/all-ways-egpu/wiki/AMD-Performance-Fixes)
+
 - PR's for any other issues welcome :)
