@@ -415,6 +415,9 @@ uninstall() {
 	rm -f /usr/share/applications/all-ways-egpu.desktop
 	rm -f /home/*/.local/share/applications/all-ways-egpu.desktop
 	rm -rf $CONFDIR
+	rm -f $UDEV_RULE_PATH
+	rm -f $SWAY_PATH
+	rm -f $KWIN_PATH
 }
 
 status() {
