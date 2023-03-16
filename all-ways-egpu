@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.51.0
+VERSION=0.51.1
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -162,7 +162,7 @@ manualSetup() {
 		if [ "$MAN_ID" = "n" ]; then
 			break
 		else
-			PATTERN='[0-9a-f].*\:[0-9a-f].*\:[0-9a-f].*\.[0-9a-f]. *'
+			PATTERN='[0-9a-f].*:[0-9a-f].*:[0-9a-f].*\.[0-9a-f]. *'
 			if echo "$MAN_ID" | grep -q -e "$PATTERN"; then
 				echo "$MAN_ID" >> "$IDS_FILE"
 			else
