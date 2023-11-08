@@ -311,7 +311,7 @@ setCompVars() {
 		while read -r LINE; do
 			BUS=$(echo "$LINE"  | awk '{ print $1 }')
 			if udevadm info -n "$C_NAME" -q path | grep -q "$BUS"/drm; then
-				GPU_P="$DELIM""$GPU_P""$C_NAME"
+				GPU_P="$GPU_P""$DELIM""$C_NAME"
 				echo 'ENV{DEVNAME}=="'"$C_NAME"'", TAG+="mutter-device-preferred-primary"' > "$UDEV_RULE_PATH"
 				P_NUM=$((P_NUM + 1))
 				break
@@ -319,7 +319,7 @@ setCompVars() {
 		done < "$IDS_FILE"
 
 		if [ $P_NUM -eq 0 ]; then
-			GPU_S="$DELIM""$GPU_S""$C_NAME"
+			GPU_S="$GPU_S""$DELIM""$C_NAME"
 		fi
 	done
 	udevadm control --reload-rules
