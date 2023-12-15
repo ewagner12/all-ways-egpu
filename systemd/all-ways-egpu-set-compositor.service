@@ -1,6 +1,6 @@
 [Unit]
 Description=Configure eGPU as primary using compositor variables under Wayland desktops
-After=display-manager.service
+After=display-manager.service bolt.service
 
 [Service]
 Type=simple
