@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.51.1
+VERSION=0.51.2
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -11,12 +11,16 @@ EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
 UDEV_RULE_PATH="/etc/udev/rules.d/61-mutter-primary-gpu.rules"
 SWAY_PATH="$ENV_PATH""/10sway.conf"
 KWIN_PATH="$ENV_PATH""/10kwin.conf"
+RETRY_FILE="$USER_IDS_DIR"/max-retry
+#Default retry number, overridden if set to a different number in RETRY_FILE
+MAX_RETRY=2
 
 setupConfig() {
 	if [ "${2}" -eq 1 ]; then
-		USER_IDS_DIR=/home/$SUDO_USER/.config/all-ways-egpu
+		USER_IDS_DIR=/home/"$SUDO_USER"/.config/all-ways-egpu
 		PCI_DEV="$USER_IDS_DIR"/user-bus-ids
 		EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
+		RETRY_FILE="$USER_IDS_DIR"/max-retry
 	fi
 	mkdir -p "$USER_IDS_DIR"
 
@@ -34,6 +38,9 @@ setupConfig() {
 	fi
 	echo 0 > "$USER_IDS_DIR"/0
 	echo 1 > "$USER_IDS_DIR"/1
+	if [ ! -e "$RETRY_FILE" ]; then
+		echo $MAX_RETRY > "$RETRY_FILE"
+	fi
 
 	if [ "${1}" -eq 1 ]; then
 		USER_TEMP_IDS="$(lspci -D -n)"
@@ -239,30 +246,43 @@ setBootVGA() {
 	removeBootVGA
 
 	EGPU_DETECT=0
-
-	for CARD in $(lspci -D -d ::0300 -n | awk -F' ' '{print $1}'); do
-		set -- /sys/bus/pci/devices/"$CARD"
-		for BOOT_VGA_PATH in "$@"; do
-			if grep -q "$CARD" < "$IDS_FILE"; then
-				echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
-				mount -n --bind -o ro "$USER_IDS_DIR"/1  "$BOOT_VGA_PATH"/boot_vga
-				EGPU_DETECT=1
-
-			else
-				if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
-					echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
-					mount -n --bind -o ro "$USER_IDS_DIR"/0 "$BOOT_VGA_PATH"/boot_vga
-				fi
-			fi
-		done
-	done
-
-	if [ $EGPU_DETECT -eq 1 ]; then
-		echo "Bind mounts set. Restart Display Manager for changes to take effect."
-	else
-		echo "No eGPU detected."
-		subRemoveVGA "$USER_IDS_DIR"
+	RETRY=0
+	if [ -e "$RETRY_FILE" ]; then
+		MAX_RETRY=$(cat "$RETRY_FILE")
 	fi
+	while [ "$RETRY" -le "$MAX_RETRY" ]; do
+		while read -r LINE; do
+			BUS=$(echo "$LINE"  | awk '{ print $1 }')
+			if lspci -D -d ::0300 -n | grep -q "$BUS"; then
+				EGPU_DETECT=1
+			fi
+		done < "$IDS_FILE"
+		if [ $EGPU_DETECT -eq 1 ]; then
+			for CARD in $(lspci -D -d ::0300 -n | awk -F' ' '{print $1}'); do
+				set -- /sys/bus/pci/devices/"$CARD"
+				for BOOT_VGA_PATH in "$@"; do
+					if grep -q "$CARD" < "$IDS_FILE"; then
+						echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
+						mount -n --bind -o ro "$USER_IDS_DIR"/1  "$BOOT_VGA_PATH"/boot_vga
+					else
+						if grep -q "1" < "${BOOT_VGA_PATH}"/boot_vga; then
+							echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
+							mount -n --bind -o ro "$USER_IDS_DIR"/0 "$BOOT_VGA_PATH"/boot_vga
+						fi
+					fi
+				done
+			done
+			echo "Bind mounts set. Restart Display Manager for changes to take effect."
+			break
+		fi
+		RETRY=$((RETRY+1))
+		if [ $RETRY -le "$MAX_RETRY" ]; then
+			echo "No eGPU detected, retry $RETRY"
+			sleep 0.5
+		else
+			echo "No eGPU detected after $MAX_RETRY retries. Check eGPU connection or increase number in $RETRY_FILE to give more time"
+		fi
+	done
 }
 
 removeBootVGA() {
@@ -296,34 +316,51 @@ setCompVars() {
 		mkdir "$ENV_PATH"
 	fi
 
-	GPU_P=""
-	GPU_S=""
-	DELIM=":"
-
 	echo 'ENV{DEVNAME}=="/dev/dri/card*", TAG="dummytag"' > "$UDEV_RULE_PATH"
 	udevadm control --reload-rules
 	udevadm trigger
 	if [ -e "$UDEV_RULE_PATH" ]; then
 		rm "$UDEV_RULE_PATH"
 	fi
-	for C_NAME in /dev/dri/card*; do
-		P_NUM=0
-		while read -r LINE; do
-			BUS=$(echo "$LINE"  | awk '{ print $1 }')
-			if udevadm info -n "$C_NAME" -q path | grep -q "$BUS"/drm; then
+
+	EGPU_DETECT=0
+	DELIM=":"
+	RETRY=0
+	if [ -e "$RETRY_FILE" ]; then
+		MAX_RETRY=$(cat "$RETRY_FILE")
+	fi
+	while [ "$RETRY" -le "$MAX_RETRY" ]; do
+		GPU_P=""
+		GPU_S=""
+		for C_NAME in /dev/dri/card*; do
+			P_NUM=0
+			while read -r LINE; do
+				BUS=$(echo "$LINE"  | awk '{ print $1 }')
+				if udevadm info -n "$C_NAME" -q path | grep -q "$BUS"/drm; then
 				GPU_P="$GPU_P""$DELIM""$C_NAME"
 				echo 'ENV{DEVNAME}=="'"$C_NAME"'", TAG+="mutter-device-preferred-primary"' > "$UDEV_RULE_PATH"
 				P_NUM=$((P_NUM + 1))
+				EGPU_DETECT=1
 				break
+				fi
+			done < "$IDS_FILE"
+			if [ $P_NUM -eq 0 ]; then
+				GPU_S="$GPU_S""$DELIM""$C_NAME"
 			fi
-		done < "$IDS_FILE"
-
-		if [ $P_NUM -eq 0 ]; then
-			GPU_S="$GPU_S""$DELIM""$C_NAME"
+		done
+		if [ $EGPU_DETECT -eq 1 ]; then
+			udevadm control --reload-rules
+			udevadm trigger
+			break
+		fi
+		RETRY=$((RETRY+1))
+		if [ $RETRY -le "$MAX_RETRY" ]; then
+			echo "No eGPU detected, retry $RETRY"
+			sleep 0.5
+		else
+			echo "No eGPU detected after $MAX_RETRY retries. Check eGPU connection or increase number in $RETRY_FILE to give more time"
 		fi
 	done
-	udevadm control --reload-rules
-	udevadm trigger
 
 	if [ -n "$GPU_P" ]; then
 		GPU_P=$(echo "$GPU_P" | cut -c 2-)
@@ -359,9 +396,9 @@ checkBusFormat() {
 	if [ -e "$IDS_FILE" ]; then
 		UPDATE_IDS=0
 		while read -r LINE; do
-			PATTERN='[0-9a-f].*\:[0-9a-f].*\:[0-9a-f].*\.[0-9a-f]. *'
+			PATTERN='[0-9a-f].*:[0-9a-f].*:[0-9a-f].*\.[0-9a-f]. *'
 			if ! echo "$LINE" | grep -q -e "$PATTERN"; then
-				PATTERN='[0-9a-f].*\:[0-9a-f].*\.[0-9a-f]. *'
+				PATTERN='[0-9a-f].*:[0-9a-f].*\.[0-9a-f]. *'
 				if echo "$LINE" | grep -q -e "$PATTERN"; then
 					echo "File using legacy format, updating..."
 					UPDATE_IDS=1
@@ -645,9 +682,10 @@ fi
 # try to detect the current user configuration if it exists
 if [ "$SUDO_USER" != "" ]; then
 	if [ -e /home/"$SUDO_USER"/.config/all-ways-egpu/egpu-bus-ids ] || [ -e /home/"$SUDO_USER"/.config/all-ways-egpu/user-bus-ids ]; then
-		USER_IDS_DIR=/home/$SUDO_USER/.config/all-ways-egpu
-		PCI_DEV=$USER_IDS_DIR/user-bus-ids
-		EGPU_IDS=$USER_IDS_DIR/egpu-bus-ids
+		USER_IDS_DIR=/home/"$SUDO_USER"/.config/all-ways-egpu
+		PCI_DEV="$USER_IDS_DIR"/user-bus-ids
+		EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
+		RETRY_FILE="$USER_IDS_DIR"/max-retry
 	fi
 fi
 
