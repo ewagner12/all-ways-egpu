@@ -4,7 +4,7 @@ Before=display-manager.service
 After=bolt.service
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=all-ways-egpu boot
 
 [Install]
