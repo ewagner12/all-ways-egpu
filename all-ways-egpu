@@ -598,18 +598,33 @@ menu() {
 				;;
 			5) clear
 				echo "1. Set compositor variables to eGPU"
-				echo "2. Set compositor variables to internal"
-				printf "3. Configure setting compositor variables at boot\n\n"
-				echo "Enter Choice [1-3]: "
+				echo "2. Set compositor variables to default"
+				echo "3. Set compositor variables to internal"
+				printf "4. Configure setting compositor variables at boot\n\n"
+				echo "Enter Choice [1-4]: "
 				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
 						setCompVars "$EGPU_IDS"
 						;;
 					2)
-						setCompVars "$PCI_DEV"
+						echo 'ENV{DEVNAME}=="/dev/dri/card*", TAG="dummytag"' > "$UDEV_RULE_PATH"
+						udevadm control --reload-rules
+						udevadm trigger
+						if [ -e "$UDEV_RULE_PATH" ]; then
+							rm "$UDEV_RULE_PATH"
+						fi
+						if [ -e "$SWAY_PATH" ]; then
+							rm "$SWAY_PATH"
+						fi
+						if [ -e "$KWIN_PATH" ]; then
+							rm "$KWIN_PATH"
+						fi
 						;;
 					3)
+						setCompVars "$PCI_DEV"
+						;;
+					4)
 						setupAutostart ${user_mode}
 						;;
 					*)
