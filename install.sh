@@ -35,7 +35,7 @@ case $1 in
 			cp all-ways-egpu "$HD"/bin
 			chmod +x "$HD"/bin/all-ways-egpu
 			cp all-ways-egpu.desktop "$HD"/.local/share/applications
-			echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc
+			if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
 		done
 		;;
 
