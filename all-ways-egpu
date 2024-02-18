@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.51.2
+VERSION=0.52.0
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -90,7 +90,7 @@ setupAutostart() {
 	fi
 
 	if [ "${1}" -eq 1 ]; then
-		echo "Note startup files will use system configuration, not user configuration"
+		echo "Note startup files will use first user's configuration"
 	fi
 
 	echo "Recommended if using Method 1: Attempt to re-enable the iGPU/initially disabled devices after login? [y/N]"
@@ -702,6 +702,17 @@ if [ "$SUDO_USER" != "" ]; then
 		EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
 		RETRY_FILE="$USER_IDS_DIR"/max-retry
 	fi
+else
+	# when run as root uses first user config if one is found. To override, specify user instead of * in next line
+	for HD in /home/*/.config; do
+		if [ -e "$HD"/all-ways-egpu/egpu-bus-ids ] || [ -e "$HD"/all-ways-egpu/user-bus-ids ]; then
+			USER_IDS_DIR="$HD"/all-ways-egpu
+			PCI_DEV="$USER_IDS_DIR"/user-bus-ids
+			EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
+			RETRY_FILE="$USER_IDS_DIR"/max-retry
+			break
+		fi
+	done
 fi
 
 # sanity check Bus IDs format in existing files

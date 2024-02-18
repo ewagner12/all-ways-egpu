@@ -12,13 +12,14 @@ Download and install the latest release using the following one line command:
 cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
 ```
 
+If the above command fails due to a non-writable /usr then go to the next section below.
 ### Steam Deck/User Installation:
 This following installation method is specifically for those using Steam Deck/SteamOS 3.0 or any other distro (such as Fedora Silverblue) where the system files are read-only:
 
 ```
 cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
 ```
-Note that running the command above adds ~/bin to your path in Bash. If using a different shell be sure to add ~/bin to your path in your shell. Automatic switching at bootup is not available with this type of installation so the script must be run by the user after login to switch to the eGPU (see Usage section below).
+Note that running the command above adds ~/bin to your path in Bash. If using a different shell be sure to add ~/bin to your path in your shell.
 
 ### Git
 Clone the repo to get the latest from github:
@@ -26,13 +27,9 @@ Clone the repo to get the latest from github:
 git clone https://github.com/ewagner12/all-ways-egpu.git
 ```
 
-To install/uninstall navigate to the downloaded location:
+To install/uninstall navigate to the downloaded location and run the install.sh script:
 ```
 cd all-ways-egpu
-```
-
-Install:
-```
 chmod +x install.sh; sudo ./install.sh install
 ```
 
