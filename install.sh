@@ -43,8 +43,12 @@ case $1 in
 			mkdir -p "$HD"/bin
 			cp all-ways-egpu "$HD"/bin
 			chmod +x "$HD"/bin/all-ways-egpu
-			cp all-ways-egpu.desktop "$HD"/.local/share/applications
-			if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
+			if [ -e "$HD"/.local/share/applications ]; then
+				cp all-ways-egpu.desktop "$HD"/.local/share/applications
+			fi
+			if [ -e "$HD"/.bashrc ]; then
+				if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
+			fi
 		done
 		;;
 
