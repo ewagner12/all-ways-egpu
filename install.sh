@@ -34,22 +34,27 @@ case $1 in
 
 	user-install)
 		set -- "${DESTDIR}"/home/*
-		# Init services hard coded to first user path
-		sed -i 's,=all-ways-egpu,='"$1"'\/bin\/all-ways-egpu,' systemd/*.service
-		sed -i 's,="all-ways-egpu",="'"$1"'\/bin\/all-ways-egpu\",' OpenRC/*-openrc
-		mkdir -p "${DESTDIR}"${CONFDIR}
-		initServices
 		for HD in "$@"; do
 			mkdir -p "$HD"/bin
 			cp all-ways-egpu "$HD"/bin
 			chmod +x "$HD"/bin/all-ways-egpu
-			if [ -e "$HD"/.local/share/applications ]; then
-				cp all-ways-egpu.desktop "$HD"/.local/share/applications
-			fi
-			if [ -e "$HD"/.bashrc ]; then
-				if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
+			if [ -x "$HD"/bin/all-ways-egpu ]; then
+				# Init services hard coded to first user path that is executable
+				sed -i 's,=all-ways-egpu,='"$HD"'\/bin\/all-ways-egpu,' systemd/*.service
+				sed -i 's,="all-ways-egpu",="'"$HD"'\/bin\/all-ways-egpu\",' OpenRC/*-openrc
+				if [ -e "$HD"/.local/share/applications ]; then
+					cp all-ways-egpu.desktop "$HD"/.local/share/applications
+				fi
+				if [ -e "$HD"/.bashrc ]; then
+					if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
+				fi
+			else
+				echo "Skipping directory ""$HD"" that is not executable"
+				rm -f "$HD"/bin/all-ways-egpu
 			fi
 		done
+		mkdir -p "${DESTDIR}"${CONFDIR}
+		initServices
 		;;
 
 	uninstall)
