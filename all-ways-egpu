@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.52.0
+VERSION=0.52.1
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -237,6 +237,31 @@ removeIDs() {
 
 addInternal() {
 	echo 1 > /sys/bus/pci/rescan
+}
+
+configureEnable() {
+	if [ ! -e $CONFDIR/all-ways-egpu.service ]; then
+		echo "No service files found"
+		exit 1
+	fi
+	if [ "$SERV_MAN" = "systemd" ]; then
+		if [ "${1}" -eq 0 ]; then
+			systemctl enable all-ways-egpu.service
+		else
+			systemctl disable all-ways-egpu.service
+		fi
+	else
+		if [ "$SERV_MAN" = "openrc" ]; then
+			if [ "${1}" -eq 0 ]; then
+				rc-update add all-ways-egpu-openrc default
+			else
+				rc-update delete all-ways-egpu-openrc default
+			fi
+		else
+			echo "No way to run service files found"
+			exit 1
+		fi
+	fi
 }
 
 setBootVGA() {
@@ -515,13 +540,14 @@ status() {
 
 help() {
 	clear
-	echo 'Valid arguments are "configure egpu|internal", "switch egpu|internal", "set-boot-vga egpu|internal|force-internal", "set-compositor-primary egpu|internal", "boot", "setup [--all]|[--manual]" or "uninstall".'
+	echo 'Valid arguments are "configure egpu|internal", "switch egpu|internal|force-internal", "set-boot-vga egpu|internal|force-internal", "set-compositor-primary egpu|internal", "boot", "setup [--all]|[--manual]" or "uninstall".'
 	printf "Example: sudo all-ways-egpu setup\n\n"
 	echo "Usage:"
 	echo "Method 1:"
 	echo "To force the eGPU as primary, run: sudo all-ways-egpu switch egpu"
 	echo "This will temporarily remove any internal graphics and restart the display manager, logging you out. The login screen should then display on the eGPU connected display"
-	echo "To re-enable integrated graphics, restart, or run: sudo all-ways-egpu internal"
+	echo "To have both iGPU and eGPU active, run: sudo all-ways-egpu switch internal"
+	echo "To have iGPU only active and disable eGPU to allow for hot-unplug of eGPU: sudo all-ways-egpu switch force-internal"
 	echo "If this works for you, you may run the following command to automatically switch to eGPU on every boot up:"
 	echo "sudo all-ways-egpu configure egpu"
 	echo "In this mode, the script should default back to iGPU on boot up if no eGPU is connected."
@@ -560,9 +586,9 @@ menu() {
 						echo "Would you like to automatically disable iGPU at boot? [y/N]: "
 						read -r MENU_CHOICE
 							if [ "${MENU_CHOICE}" = "y" ]; then
-								all-ways-egpu configure egpu
+								configureEnable 0
 							else
-								all-ways-egpu configure internal
+								configureEnable 1
 							fi
 						;;
 					*)
@@ -762,29 +788,13 @@ case $1 in
 		echo "Configuration files successfully created. See help for usage information"
 		;;
 	configure)
-		if [ ! -e $CONFDIR/all-ways-egpu.service ]; then
-			echo "No service files found"
-			exit 1
-		fi
-		if [ "$SERV_MAN" = "systemd" ]; then
-			ENABLE_CMD="systemctl enable all-ways-egpu.service"
-			DISABLE_CMD="systemctl disable all-ways-egpu.service"
-		else
-			if [ "$SERV_MAN" = "openrc" ]; then
-				ENABLE_CMD="rc-update add all-ways-egpu-openrc default"
-				DISABLE_CMD="rc-update delete all-ways-egpu-openrc default"
-			else
-				echo "No way to run service files found"
-				exit 1
-			fi
-		fi
 		for option in "$@"; do
 			if [ "${option}" = "egpu" ]; then
-				$ENABLE_CMD
+				configureEnable 0
 				exit
 			else
 				if [ "${option}" = "internal" ]; then
-					$DISABLE_CMD
+					configureEnable 1
 					exit
 				fi
 			fi
@@ -801,7 +811,7 @@ case $1 in
 					cardSelect=2
 				fi
 			fi
-			if [ "${option}" = "--remove-egpu" ]; then
+			if [ "${option}" = "force-internal" ]; then
 				cardSelect=3
 			fi
 		done
@@ -817,7 +827,7 @@ case $1 in
 				removeIDs "$EGPU_IDS"
 				;;
 			*)
-				echo "Specify 'egpu' or 'internal' to be switched to"
+				echo "Specify 'egpu' or 'internal' or 'force-internal' to be switched to"
 				;;
 		esac
 		;;
@@ -850,7 +860,7 @@ case $1 in
 				exit
 				;;
 		esac
-		echo "Specify 'egpu' or 'internal' to be switched to"
+		echo "Specify 'egpu' or 'internal' or 'force-internal' to be switched to"
 		;;
 	set-compositor-primary)
 		cardSelect=0
