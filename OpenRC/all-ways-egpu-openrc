@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-command="all-ways-egpu"
+command="all-ways-egpu-entry.sh"
 command_args="boot"
 pidfile="/var/run/${RC_SVCNAME}.pid"
 name="All-Ways-eGPU Start-up GPU Daemon"

@@ -13,8 +13,8 @@ cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/down
 ```
 
 If the above command fails due to a non-writable /usr then go to the next section below.
-### Steam Deck/User Installation:
-This following installation method is specifically for those using Steam Deck/SteamOS 3.0 or any other distro (such as Fedora Silverblue) where the system files are read-only:
+### SteamOS/Bazzite/User Installation:
+This following installation method is specifically for those using Steam Deck/SteamOS 3.0 or any other distro (such as Bazzite/Fedora Silverblue) where the system files are read-only:
 
 ```
 cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
@@ -29,8 +29,7 @@ git clone https://github.com/ewagner12/all-ways-egpu.git
 
 To install/uninstall navigate to the downloaded location and run the install.sh script:
 ```
-cd all-ways-egpu
-chmod +x install.sh; sudo ./install.sh install
+cd all-ways-egpu; chmod +x install.sh; sudo ./install.sh install
 ```
 
 ## Uninstallation:
@@ -106,7 +105,9 @@ Identity=unix-group:group-name
 Action=org.freedesktop.systemd1.manage-units
 ResultActive=yes
 ```
+## Entry point
 
+If custom commands need to be run before or after the all-ways-egpu script at boot, these can be added to /usr/bin/all-ways-egpu-entry.sh (Or /home/$USER/bin/all-ways-egpu-entry.sh if installed as a User Installation)
 
 ## Other Potential Issues:
 

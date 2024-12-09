@@ -4,7 +4,7 @@ After=display-manager.service bolt.service
 
 [Service]
 Type=oneshot
-ExecStart=all-ways-egpu set-boot-vga egpu
+ExecStart=all-ways-egpu-entry.sh set-boot-vga egpu
 
 [Install]
 WantedBy=graphical.target

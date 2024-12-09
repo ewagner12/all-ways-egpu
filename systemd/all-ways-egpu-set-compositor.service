@@ -4,7 +4,7 @@ After=display-manager.service bolt.service
 
 [Service]
 Type=oneshot
-ExecStart=all-ways-egpu set-compositor-primary egpu
+ExecStart=all-ways-egpu-entry.sh set-compositor-primary egpu
 
 [Install]
 WantedBy=graphical.target

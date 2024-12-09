@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.52.1
+VERSION=0.53.0
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -442,7 +442,9 @@ checkBusFormat() {
 uninstall() {
 	removeBootVGA
 	rm -f ${BINDIR}/all-ways-egpu
+	rm -f ${BINDIR}/all-ways-egpu-entry.sh
 	rm -f /home/*/bin/all-ways-egpu
+	rm -f /home/*/bin/all-ways-egpu-entry.sh
 	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		systemctl disable all-ways-egpu.service

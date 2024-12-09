@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-command="all-ways-egpu"
+command="all-ways-egpu-entry.sh"
 command_args="set-compositor-primary egpu"
 pidfile="/var/run/${RC_SVCNAME}.pid"
 name="All-Ways-eGPU Set Compositor Daemon"

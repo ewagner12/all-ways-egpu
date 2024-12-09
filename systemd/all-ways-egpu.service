@@ -5,7 +5,7 @@ After=bolt.service
 
 [Service]
 Type=oneshot
-ExecStart=all-ways-egpu boot
+ExecStart=all-ways-egpu-entry.sh boot
 
 [Install]
 WantedBy=graphical.target
