@@ -40,7 +40,7 @@ case $1 in
 		set -- "${DESTDIR}"/home/*
 		for HD in "$@"; do
 			mkdir -p "$HD"/bin
-			if [ -x "$HD"/bin/all-ways-egpu ]; then
+			if [ -x "$HD"/bin ]; then
 				# Init services hard coded to first user path that is executable
 				sed -i 's,=all-ways-egpu,='"$HD"'\/bin\/all-ways-egpu,' systemd/*.service
 				sed -i 's,="all-ways-egpu",="'"$HD"'\/bin\/all-ways-egpu\",' OpenRC/*-openrc
