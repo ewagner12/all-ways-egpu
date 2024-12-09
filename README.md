@@ -105,7 +105,7 @@ Identity=unix-group:group-name
 Action=org.freedesktop.systemd1.manage-units
 ResultActive=yes
 ```
-## Entry point
+## Entry point:
 
 If custom commands need to be run before or after the all-ways-egpu script at boot, these can be added to /usr/bin/all-ways-egpu-entry.sh (Or /home/$USER/bin/all-ways-egpu-entry.sh if installed as a User Installation)
 
