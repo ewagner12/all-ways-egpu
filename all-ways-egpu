@@ -496,6 +496,7 @@ uninstall() {
 	rm -f $UDEV_RULE_PATH
 	rm -f $SWAY_PATH
 	rm -f $KWIN_PATH
+	rm -f $VK_PATH
 }
 
 status() {
