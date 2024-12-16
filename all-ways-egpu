@@ -11,6 +11,7 @@ EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
 UDEV_RULE_PATH="/etc/udev/rules.d/61-mutter-primary-gpu.rules"
 SWAY_PATH="$ENV_PATH""/10sway.conf"
 KWIN_PATH="$ENV_PATH""/10kwin.conf"
+VK_PATH="$ENV_PATH""/00-vulkan-device.conf"
 RETRY_FILE="$USER_IDS_DIR"/max-retry
 #Default retry number, overridden if set to a different number in RETRY_FILE
 MAX_RETRY=2
@@ -68,6 +69,10 @@ setupSubConfig() {
 	for PCI_BUS in $(echo "${4}" | awk -F' ' '{print $1}'); do
 		if [ -e "$EGPU_IDS" ]; then if grep -q "$PCI_BUS" < "$EGPU_IDS" ; then continue; fi; fi
 		DEV_DRIVERS=$(echo "$PCI_DRIVERS" | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
+		if [ -z "$DEV_DRIVERS" ]; then
+			echo "No driver currently loaded for this card, enter driver name manually (eg. \"nvidia\" or \"amdgpu\")"
+			read -r DEV_DRIVERS
+		fi
 		lspci -D | grep "$PCI_BUS"
 		printf "Is this the %s to set as %s? [y/N]\n" "${2}" "${3}"
 		read -r DIS_RES
@@ -387,6 +392,15 @@ setCompVars() {
 		fi
 	done
 
+	if [ $EGPU_DETECT -eq 1 ]; then
+		DID_P=$(lspci -n -s "$BUS" | awk '{ print $3 }')
+		echo VULKAN_ADAPTER="$DID_P" > "$VK_PATH"
+	else
+		if [ -e "$VK_PATH" ]; then
+			rm "$VK_PATH"
+		fi
+	fi
+
 	if [ -n "$GPU_P" ]; then
 		GPU_P=$(echo "$GPU_P" | cut -c 2-)
 		if [ -n "$GPU_S" ]; then
@@ -647,6 +661,9 @@ menu() {
 						fi
 						if [ -e "$KWIN_PATH" ]; then
 							rm "$KWIN_PATH"
+						fi
+						if [ -e "$VK_PATH" ]; then
+							rm "$VK_PATH"
 						fi
 						;;
 					3)
