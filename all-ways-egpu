@@ -573,8 +573,8 @@ help() {
 	echo "This may be a useful method for enabling the eGPU in certain Wayland desktops and may work better than Method 1 for some setups"
     printf "\nIf using the menu system, it is recommended to first setup system with option 1, then use option 4 to switch to eGPU.\n"
     echo "Method 3:"
-	echo "To only set WLR_DRM_DEVICES, KWIN_DRM_DEVICES, and mutter-device-preferred-primary variables, run: sudo all-ways-egpu set-compositor-primary egpu"
-    echo "This hints to the compositor to use the given GPU as primary. Recommended to be used for GNOME, KDE or Sway wayland compositors"
+	echo "To set WLR_DRM_DEVICES, KWIN_DRM_DEVICES, VULKAN_ADAPTER and mutter-device-preferred-primary variables, run: sudo all-ways-egpu set-compositor-primary egpu"
+    echo "This hints to the compositor to use the given GPU as primary. Recommended to be used for GNOME, KDE, gamescope-session or Sway wayland compositors"
 }
 
 menu() {
