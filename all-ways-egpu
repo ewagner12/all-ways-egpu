@@ -69,15 +69,15 @@ setupSubConfig() {
 	for PCI_BUS in $(echo "${4}" | awk -F' ' '{print $1}'); do
 		if [ -e "$EGPU_IDS" ]; then if grep -q "$PCI_BUS" < "$EGPU_IDS" ; then continue; fi; fi
 		DEV_DRIVERS=$(echo "$PCI_DRIVERS" | grep -A 3 "$PCI_BUS" | awk -F': ' 'index($1, "Kernel driver") { print $2 }')
-		if [ -z "$DEV_DRIVERS" ]; then
-			echo "No driver currently loaded for this card, enter driver name manually (eg. \"nvidia\" or \"amdgpu\")"
-			read -r DEV_DRIVERS
-		fi
 		lspci -D | grep "$PCI_BUS"
 		printf "Is this the %s to set as %s? [y/N]\n" "${2}" "${3}"
 		read -r DIS_RES
 
 		if [ "$DIS_RES" = "y" ]; then
+			if [ -z "$DEV_DRIVERS" ]; then
+				echo "No driver currently loaded for this card, enter driver name manually (eg. \"nvidia\" or \"amdgpu\")"
+				read -r DEV_DRIVERS
+			fi
 			printf 'Using %s as %s\n\n' "$PCI_BUS" "${3}"
 			printf '%s %s\n' "$PCI_BUS" "$DEV_DRIVERS" >> "${1}"
 		else
