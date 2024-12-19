@@ -371,6 +371,8 @@ setCompVars() {
 				echo 'ENV{DEVNAME}=="'"$C_NAME"'", TAG+="mutter-device-preferred-primary"' > "$UDEV_RULE_PATH"
 				P_NUM=$((P_NUM + 1))
 				EGPU_DETECT=1
+				DID_P=$(lspci -n -s "$BUS" | awk '{ print $3 }')
+				echo VULKAN_ADAPTER="$DID_P" > "$VK_PATH"
 				break
 				fi
 			done < "$IDS_FILE"
@@ -392,15 +394,6 @@ setCompVars() {
 		fi
 	done
 
-	if [ $EGPU_DETECT -eq 1 ]; then
-		DID_P=$(lspci -n -s "$BUS" | awk '{ print $3 }')
-		echo VULKAN_ADAPTER="$DID_P" > "$VK_PATH"
-	else
-		if [ -e "$VK_PATH" ]; then
-			rm "$VK_PATH"
-		fi
-	fi
-
 	if [ -n "$GPU_P" ]; then
 		GPU_P=$(echo "$GPU_P" | cut -c 2-)
 		if [ -n "$GPU_S" ]; then
@@ -417,6 +410,9 @@ setCompVars() {
 		fi
 		if [ -e "$KWIN_PATH" ]; then
 			rm "$KWIN_PATH"
+		fi
+		if [ -e "$VK_PATH" ]; then
+			rm "$VK_PATH"
 		fi
 		echo "No card set as primary"
 	fi
