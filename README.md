@@ -66,9 +66,7 @@ all-ways-egpu set-boot-vga egpu
 additional info can be found using the help flag.
 
 ### Method 3: Set Compositor Variables (Desktop Specific)
-This method sets the variables specifically used by the compositors mutter (GNOME), KWin (KDE Plasma), gamescope-session (Bazzite-Deck and ChimeraOS) and wlroots (Sway and others). This hints to these desktops to use the eGPU as primary. This only works on those compositors specifically and may not always force applications to use the eGPU. This method may be combined with Method 2.
-
-Currently this method is most useful for GNOME when Method 2 doesn't work.
+This method sets the variables specifically used by the compositors: mutter (GNOME), KWin (KDE Plasma), gamescope-session (Bazzite-Deck and ChimeraOS) and wlroots (Sway and others). This hints to these desktops to use the eGPU as primary. This only works on those compositors specifically and may not always force applications to use the eGPU. Method 2 and Method 3 should be both used together for the best experience on the above desktops.
 ```
 all-ways-egpu set-compositor-primary egpu
 ```
@@ -107,7 +105,7 @@ ResultActive=yes
 ```
 ## Entry point:
 
-If custom commands need to be run before or after the all-ways-egpu script at boot, these can be added to /usr/bin/all-ways-egpu-entry.sh (Or /home/$USER/bin/all-ways-egpu-entry.sh if installed as a User Installation)
+If custom commands need to be run before or after the all-ways-egpu script at boot, these can be added to `/usr/bin/all-ways-egpu-entry.sh` (Or `/home/$USER/bin/all-ways-egpu-entry.sh` if installed as a User Installation)
 
 ## Other Potential Issues:
 
