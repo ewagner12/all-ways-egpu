@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.53.0
+VERSION=0.54.0
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -12,6 +12,8 @@ UDEV_RULE_PATH="/etc/udev/rules.d/61-mutter-primary-gpu.rules"
 SWAY_PATH="$ENV_PATH""/10sway.conf"
 KWIN_PATH="$ENV_PATH""/10kwin.conf"
 VK_PATH="$ENV_PATH""/00-vulkan-device.conf"
+#Location of hyprland.conf relative to ~
+HYPR_PATH=.config/hypr/hyprland.conf
 RETRY_FILE="$USER_IDS_DIR"/max-retry
 #Default retry number, overridden if set to a different number in RETRY_FILE
 MAX_RETRY=2
@@ -40,7 +42,7 @@ setupConfig() {
 	echo 0 > "$USER_IDS_DIR"/0
 	echo 1 > "$USER_IDS_DIR"/1
 	if [ ! -e "$RETRY_FILE" ]; then
-		echo $MAX_RETRY > "$RETRY_FILE"
+		echo "$MAX_RETRY" > "$RETRY_FILE"
 	fi
 
 	if [ "${1}" -eq 1 ]; then
@@ -185,6 +187,7 @@ manualSetup() {
 	done
 }
 
+# Used for Method 1
 removeIDs() {
 	IDS_FILE="${1}"
 	if ! checkSetup "$IDS_FILE"; then return; fi
@@ -269,6 +272,7 @@ configureEnable() {
 	fi
 }
 
+# Used for Method 2
 setBootVGA() {
 	IDS_FILE="${1}"
 	if ! checkSetup "$IDS_FILE"; then return; fi
@@ -339,6 +343,7 @@ subRemoveVGA() {
 	rm -f "$BIND_PATHS"
 }
 
+# Used for Method 3
 setCompVars() {
 	IDS_FILE="${1}"
 	if ! checkSetup "$IDS_FILE"; then return; fi
@@ -399,23 +404,47 @@ setCompVars() {
 		if [ -n "$GPU_S" ]; then
 			echo WLR_DRM_DEVICES="$GPU_P""$GPU_S" > "$SWAY_PATH"
 			echo KWIN_DRM_DEVICES="$GPU_P""$GPU_S" > "$KWIN_PATH"
+			set -- /home/*/"$HYPR_PATH"
+			for HYPR_FILE in "$@"; do
+				if [ -e "$HYPR_FILE" ]; then
+					sed -i '/env = AQ_DRM_DEVICES/d' "$HYPR_FILE"
+					echo env = AQ_DRM_DEVICES,"$GPU_P""$GPU_S" >> "$HYPR_FILE"
+				fi
+			done
 		else
 			echo WLR_DRM_DEVICES="$GPU_P" > "$SWAY_PATH"
 			echo KWIN_DRM_DEVICES="$GPU_P" > "$KWIN_PATH"
+			set -- /home/*/"$HYPR_PATH"
+			for HYPR_FILE in "$@"; do
+				if [ -e "$HYPR_FILE" ]; then
+					sed -i '/env = AQ_DRM_DEVICES/d' "$HYPR_FILE"
+					echo env = AQ_DRM_DEVICES,"$GPU_P" >> "$HYPR_FILE"
+				fi
+			done
 		fi
 		echo "Compositor variables set. Restart Display Manager for changes to take effect."
 	else
-		if [ -e "$SWAY_PATH" ]; then
-			rm "$SWAY_PATH"
-		fi
-		if [ -e "$KWIN_PATH" ]; then
-			rm "$KWIN_PATH"
-		fi
-		if [ -e "$VK_PATH" ]; then
-			rm "$VK_PATH"
-		fi
+		subRemoveEnv
 		echo "No card set as primary"
 	fi
+}
+
+subRemoveEnv() {
+	if [ -e "$SWAY_PATH" ]; then
+		rm "$SWAY_PATH"
+	fi
+	if [ -e "$KWIN_PATH" ]; then
+		rm "$KWIN_PATH"
+	fi
+	if [ -e "$VK_PATH" ]; then
+		rm "$VK_PATH"
+	fi
+	set -- /home/*/"$HYPR_PATH"
+	for HYPR_FILE in "$@"; do
+		if [ -e "$HYPR_FILE" ]; then
+			sed -i '/env = AQ_DRM_DEVICES/d' "$HYPR_FILE"
+		fi
+	done
 }
 
 checkSetup() {
@@ -490,9 +519,7 @@ uninstall() {
 	rm -f /home/*/.local/share/applications/all-ways-egpu.desktop
 	rm -rf $CONFDIR
 	rm -f $UDEV_RULE_PATH
-	rm -f $SWAY_PATH
-	rm -f $KWIN_PATH
-	rm -f $VK_PATH
+	subRemoveEnv
 }
 
 status() {
@@ -653,15 +680,7 @@ menu() {
 						if [ -e "$UDEV_RULE_PATH" ]; then
 							rm "$UDEV_RULE_PATH"
 						fi
-						if [ -e "$SWAY_PATH" ]; then
-							rm "$SWAY_PATH"
-						fi
-						if [ -e "$KWIN_PATH" ]; then
-							rm "$KWIN_PATH"
-						fi
-						if [ -e "$VK_PATH" ]; then
-							rm "$VK_PATH"
-						fi
+						subRemoveEnv
 						;;
 					3)
 						setCompVars "$PCI_DEV"
