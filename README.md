@@ -9,17 +9,10 @@ For more info on why this script exists and how it works, see the [wiki](https:/
 Download and install the latest release using the following one line command:
 
 ```
-cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
+cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
 ```
 
-If the above command fails due to a non-writable /usr then go to the next section below.
-### SteamOS/Bazzite/User Installation:
-This following installation method is specifically for those using Steam Deck/SteamOS 3.0 or any other distro (such as Bazzite/Fedora Silverblue) where the system files are read-only:
-
-```
-cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
-```
-Note that running the command above adds ~/bin to your path in Bash. If using a different shell be sure to add ~/bin to your path in your shell.
+Note that running the command above on SteamOS, Bazzite or any other distro where the system files are read-only will install the script to ~/bin and add ~/bin to your path in Bash. If using a different shell be sure to add ~/bin to your path in your shell.
 
 ### Git
 Clone the repo to get the latest from github:
@@ -29,7 +22,7 @@ git clone https://github.com/ewagner12/all-ways-egpu.git
 
 To install/uninstall navigate to the downloaded location and run the install.sh script:
 ```
-cd all-ways-egpu; chmod +x install.sh; sudo ./install.sh install
+cd all-ways-egpu; chmod +x install.sh; sudo ./install.sh
 ```
 
 ## Uninstallation:
@@ -128,5 +121,10 @@ If custom commands need to be run before or after the all-ways-egpu script at bo
 - If using the SDDM login ensure the wayland backend is used.
 
 - If seeing poor performance with an AMD GPU, see the performance fixes noted [here](https://github.com/ewagner12/all-ways-egpu/wiki/AMD-Performance-Fixes)
+
+- If the install command fails due to a non-writable /usr then try installing using the following command and open an issue:
+```
+cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
+```
 
 - PR's for any other issues welcome :)

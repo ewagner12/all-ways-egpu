@@ -580,7 +580,7 @@ status() {
 
 help() {
 	clear
-	echo 'Valid arguments are "configure egpu|internal", "switch egpu|internal|force-internal", "set-boot-vga egpu|internal|force-internal", "set-compositor-primary egpu|internal", "boot", "setup [--all]|[--manual]" or "uninstall".'
+	echo 'Valid arguments are "configure egpu|internal", "switch egpu|internal|force-internal", "set-boot-vga egpu|internal|force-internal", "set-compositor-primary egpu|internal", "boot", "setup [--all]|[--manual]", "status", "version" or "uninstall".'
 	printf "Example: sudo all-ways-egpu setup\n\n"
 	echo "Usage:"
 	echo "Method 1:"
@@ -800,6 +800,14 @@ fi
 case $1 in
 	-h|help)
 	help
+	exit 0
+		;;
+	-v|version)
+	echo "all-ways-egpu version: $VERSION"
+	exit 0
+		;;
+	status)
+	status
 	exit 0
 		;;
 	setup)
