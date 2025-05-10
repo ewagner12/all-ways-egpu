@@ -1,10 +1,11 @@
 [Unit]
 Description=Configure eGPU as primary using compositor variables under Wayland desktops
-After=display-manager.service bolt.service
+Before=display-manager.service
+After=bolt.service dbus.service
 
 [Service]
 Type=oneshot
-ExecStart=all-ways-egpu-entry.sh set-compositor-primary egpu
+ExecStart=all-ways-egpu-entry.sh set-compositor-primary
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target

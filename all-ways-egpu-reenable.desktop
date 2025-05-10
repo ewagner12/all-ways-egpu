@@ -5,7 +5,7 @@ Comment=Re-enables iGPU after setting eGPU as primary for Wayland desktops
 Exec=systemctl start all-ways-egpu-user.service
 Terminal=false
 Type=Application
-Version=0.54.0
+Version=0.54.1
 Categories=System;Settings;Utility;
 Keywords=system;hardware;
 

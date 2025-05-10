@@ -1,10 +1,11 @@
 [Unit]
 Description=Configure eGPU as primary using boot_vga under Wayland desktops
-After=display-manager.service bolt.service
+Before=display-manager.service
+After=bolt.service dbus.service
 
 [Service]
 Type=oneshot
 ExecStart=all-ways-egpu-entry.sh set-boot-vga egpu
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
