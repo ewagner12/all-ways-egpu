@@ -365,7 +365,7 @@ setCompVars() {
 			P_NUM=0
 			while read -r LINE; do
 				BUS=$(echo "$LINE"  | awk '{ print $1 }')
-				if [ "$C_NAME" == /dev/dri/by-path/pci-"$BUS"-card ]; then
+				if [ "$C_NAME" = /dev/dri/by-path/pci-"$BUS"-card ]; then
 				D_NAME=$(readlink -f "$C_NAME")
 				GPU_P="$GPU_P""$DELIM""$D_NAME"
 				P_NUM=$((P_NUM + 1))
@@ -943,7 +943,7 @@ case $1 in
 				# If setting compositor variables at boot add delay and display connected check
 				sleep 4
 				setCompVars "$EGPU_IDS"
-				if [ $EGPU_DETECT -eq 1 ] && [ "$DISP_EGPU" -ne 1 ]; then
+				if [ "$EGPU_DETECT" -eq 1 ] && [ "$DISP_EGPU" -ne 1 ]; then
 					echo "Setting compositor variables to internal as no eGPU attached displays were detected"
 					setCompVars "$PCI_DEV"
 				fi
