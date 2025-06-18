@@ -51,7 +51,7 @@ setupConfig() {
 		if [ "${1}" -eq 2 ]; then
 			USER_TEMP_IDS=""
 		else
-			USER_TEMP_IDS="$(lspci -D -d ::0300 -n && lspci -D -d ::0302 -n && lspci -D -d ::0403 -n)"
+			USER_TEMP_IDS="$(lspci -D -d ::0300 -n && lspci -D -d ::0302 -n && lspci -D -d ::0380 -n && lspci -D -d ::0403 -n)"
 		fi
 	fi
 
