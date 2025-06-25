@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.54.1
+VERSION=0.54.2
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -287,12 +287,12 @@ setBootVGA() {
 	while [ "$RETRY" -le "$MAX_RETRY" ]; do
 		while read -r LINE; do
 			BUS=$(echo "$LINE"  | awk '{ print $1 }')
-			if lspci -D -d ::0300 -n | grep -q "$BUS"; then
+			if (lspci -D -d ::0300 -n && lspci -D -d ::0302 -n && lspci -D -d ::0380 -n) | grep -q "$BUS"; then
 				EGPU_DETECT=1
 			fi
 		done < "$IDS_FILE"
 		if [ $EGPU_DETECT -eq 1 ]; then
-			for CARD in $(lspci -D -d ::0300 -n | awk -F' ' '{print $1}'); do
+			for CARD in $( (lspci -D -d ::0300 -n && lspci -D -d ::0302 -n && lspci -D -d ::0380 -n) | awk -F' ' '{print $1}'); do
 				set -- /sys/bus/pci/devices/"$CARD"
 				for BOOT_VGA_PATH in "$@"; do
 					if grep -q "$CARD" < "$IDS_FILE"; then
@@ -490,7 +490,7 @@ isDisplayConnected() {
 	DISP_FOUND=0
 	IDS_FILE="${1}"
 	if ! checkSetup "$IDS_FILE"; then return; fi
-	for CARD in $(lspci -D -d ::0300 -n | awk -F' ' '{print $1}'); do
+	for CARD in $( (lspci -D -d ::0300 -n && lspci -D -d ::0302 -n && lspci -D -d ::0380 -n) | awk -F' ' '{print $1}'); do
 		if grep -q "$CARD" < "$IDS_FILE"; then
 			DISP_NUM=0
 			DISP_DISCON=0
