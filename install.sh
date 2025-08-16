@@ -8,6 +8,7 @@ initServices() {
 	# check if using systemd or openrc
 	if [ -e "$(command -v systemctl)" ]; then
 		cp systemd/all-ways-egpu.service "${DESTDIR}"${CONFDIR}
+		cp systemd/all-ways-egpu-igpu.service "${DESTDIR}"${CONFDIR}
 		cp systemd/all-ways-egpu-user.service "${DESTDIR}"${CONFDIR}
 		cp systemd/all-ways-egpu-boot-vga.service "${DESTDIR}"${CONFDIR}
 		cp systemd/all-ways-egpu-shutdown.service "${DESTDIR}"${CONFDIR}

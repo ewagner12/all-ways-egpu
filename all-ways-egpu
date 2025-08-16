@@ -16,7 +16,7 @@ VK_PATH="$ENV_PATH""/00-vulkan-device.conf"
 HYPR_PATH=.config/hypr/hyprland.conf
 RETRY_FILE="$USER_IDS_DIR"/max-retry
 #Default retry number, overridden if set to a different number in RETRY_FILE
-MAX_RETRY=4
+MAX_RETRY=5
 
 setupConfig() {
 	if [ "${2}" -eq 1 ]; then
@@ -112,6 +112,7 @@ setupAutostart() {
 	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		cp $CONFDIR/all-ways-egpu.service ${SYSDIR}
+		cp $CONFDIR/all-ways-egpu-igpu.service ${SYSDIR}
 		cp $CONFDIR/all-ways-egpu-boot-vga.service ${SYSDIR}
 		cp $CONFDIR/all-ways-egpu-shutdown.service ${SYSDIR}
 		cp $CONFDIR/all-ways-egpu-set-compositor.service ${SYSDIR}
@@ -196,6 +197,7 @@ removeIDs() {
 		START_CMD="systemctl start display-manager.service"
 		STOP_CMD="systemctl stop display-manager.service"
 		ACT_CMD="systemctl status display-manager"
+		SYSD_VER=$(systemctl --version | grep systemd | awk '{print $2}')
 	else
 		if [ "$SERV_MAN" = "openrc" ]; then
 			START_CMD="rc-service display-manager start"
@@ -218,6 +220,7 @@ removeIDs() {
 		done
 		echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/unbind
 		echo "vesa-framebuffer.0" > /sys/bus/platform/drivers/vesa-framebuffer/unbind
+		echo "simple-framebuffer.0" > /sys/bus/platform/drivers/simple-framebuffer/unbind
 
 		# Could be 2 if 1 is too fast
 		sleep 1
@@ -239,7 +242,10 @@ removeIDs() {
 		done
 		echo "efi-framebuffer.0" > /sys/bus/platform/drivers/efi-framebuffer/bind
 		echo "vesa-framebuffer.0" > /sys/bus/platform/drivers/vesa-framebuffer/bind
-		$START_CMD ) &
+		echo "simple-framebuffer.0" > /sys/bus/platform/drivers/simple-framebuffer/bind
+		if [ "$SERV_MAN" = "openrc" ] || [ "$SYSD_VER" -lt 249 ]; then
+			$START_CMD
+		fi ) &
 	$STOP_CMD
 }
 
@@ -312,7 +318,7 @@ setBootVGA() {
 		RETRY=$((RETRY+1))
 		if [ $RETRY -le "$MAX_RETRY" ]; then
 			echo "No eGPU detected, retry $RETRY"
-			sleep 0.5
+			sleep 1
 		else
 			echo "No eGPU detected after $MAX_RETRY retries. Check eGPU connection or increase number in $RETRY_FILE to give more time"
 		fi
@@ -541,6 +547,7 @@ uninstall() {
 		systemctl disable all-ways-egpu-shutdown.service
 		systemctl disable all-ways-egpu-set-compositor.service
 		rm -f ${SYSDIR}/all-ways-egpu.service
+		rm -f ${SYSDIR}/all-ways-egpu-igpu.service
 		rm -f ${SYSDIR}/all-ways-egpu-user.service
 		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
 		rm -f ${SYSDIR}/all-ways-egpu-shutdown.service
@@ -667,10 +674,20 @@ menu() {
 				read -r MENU_CHOICE
 				case "${MENU_CHOICE}" in
 					1)
-						removeIDs "$PCI_DEV"
+						if [ "$SERV_MAN" = "systemd" ]; then
+							systemctl restart all-ways-egpu.service
+							echo "Systemd service started: See output of systemctl status all-ways-egpu.service"
+						else
+							removeIDs "$PCI_DEV"
+						fi
 						;;
 					2)
-						removeIDs "$EGPU_IDS"
+						if [ "$SERV_MAN" = "systemd" ]; then
+							systemctl restart all-ways-egpu-igpu.service
+							echo "Systemd service started: See output of systemctl status all-ways-egpu-igpu.service"
+						else
+							removeIDs "$EGPU_IDS"
+						fi
 						;;
 					3)
 						echo "Would you like to automatically disable iGPU at boot? [y/N]: "
@@ -896,21 +913,29 @@ case $1 in
 		;;
 	switch)
 		parseOptions "$@"
-		case $cardSelect in
-			1)
-				removeIDs "$PCI_DEV"
-				;;
-			2)
-				addInternal
-				;;
-			3)
-				addInternal
-				removeIDs "$EGPU_IDS"
-				;;
-			*)
-				echo "Specify 'egpu' or 'internal' or 'force-internal' to be switched to"
-				;;
-		esac
+		if [ "$SERV_MAN" = "systemd" ] && [ $cardSelect -eq 1 ]; then
+			systemctl restart all-ways-egpu.service
+			echo "Systemd service started: See output of systemctl status all-ways-egpu.service"
+		elif [ "$SERV_MAN" = "systemd" ] && [ $cardSelect -eq 3 ]; then
+			systemctl restart all-ways-egpu-igpu.service
+			echo "Systemd service started: See output of systemctl status all-ways-egpu-igpu.service"
+		else
+			case $cardSelect in
+				1)
+					removeIDs "$PCI_DEV"
+					;;
+				2)
+					addInternal
+					;;
+				3)
+					addInternal
+					removeIDs "$EGPU_IDS"
+					;;
+				*)
+					echo "Specify 'egpu' or 'internal' or 'force-internal' to be switched to"
+					;;
+			esac
+		fi
 		;;
 	set-boot-vga)
 		parseOptions "$@"
@@ -951,12 +976,44 @@ case $1 in
 		esac
 		;;
 	boot)
-		isDisplayConnected "$EGPU_IDS"
-		if [ "$DISP_FOUND" -eq 1 ]; then
-			removeIDs "$PCI_DEV"
-			exit
+		# Only use these commands as part of the boot-up services
+		RETRY=0
+		if [ -e "$RETRY_FILE" ]; then
+			MAX_RETRY=$(cat "$RETRY_FILE")
 		fi
-		echo "No eGPU detected or not setup to remove internal GPU"
+		case $2 in
+		egpu)
+		while [ "$RETRY" -le "$MAX_RETRY" ]; do
+			isDisplayConnected "$EGPU_IDS"
+			if [ "$DISP_FOUND" -eq 1 ]; then
+				removeIDs "$PCI_DEV"
+				exit
+			fi
+			RETRY=$((RETRY+1))
+			if [ $RETRY -le "$MAX_RETRY" ]; then
+				echo "No eGPU detected, retry $RETRY"
+				sleep 1
+			else
+				echo "No eGPU detected or not setup after $MAX_RETRY retries. Check eGPU connection and setup or increase number in $RETRY_FILE to give more time"
+			fi
+		done
+			;;
+		internal)
+			addInternal
+			;;
+		force-internal)
+			addInternal
+			removeIDs "$EGPU_IDS"
+			;;
+		*)
+			isDisplayConnected "$EGPU_IDS"
+			if [ "$DISP_FOUND" -eq 1 ]; then
+				removeIDs "$PCI_DEV"
+				exit
+			fi
+			echo "No eGPU detected or not setup to remove internal GPU"
+			;;
+		esac
 		;;
 	uninstall)
 		uninstall

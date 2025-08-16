@@ -1,5 +1,5 @@
 [Unit]
-Description=Configure eGPU as primary under Wayland desktops
+Description=Configure iGPU as primary under Wayland desktops
 Before=display-manager.service
 After=bolt.service dbus.service
 OnSuccess=display-manager.service
@@ -7,7 +7,7 @@ OnFailure=display-manager.service
 
 [Service]
 Type=oneshot
-ExecStart=all-ways-egpu-entry.sh boot egpu
+ExecStart=all-ways-egpu-entry.sh boot force-internal
 
 [Install]
 WantedBy=multi-user.target
