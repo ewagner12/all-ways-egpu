@@ -42,6 +42,7 @@ all-ways-egpu setup
 <details>
 <summary>Method 1: Force iGPU off (Legacy/Alternate Method)</summary>
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
+    
 ```
 all-ways-egpu configure egpu
 ```
