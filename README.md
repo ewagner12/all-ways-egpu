@@ -39,7 +39,8 @@ If you want to skip the menu system, the following terminal commands can also be
 all-ways-egpu setup
 ```
 
-### Method 1: Force iGPU off (Legacy/Alternate Method)
+<details>
+<summary>Method 1: Force iGPU off (Legacy/Alternate Method)</summary>
 To enable forcing the chosen iGPU devices off (so that the display manager uses the eGPU)
 ```
 all-ways-egpu configure egpu
@@ -49,22 +50,8 @@ To disable forcing the chosen iGPU devices off
 ```
 all-ways-egpu configure internal
 ```
-
-### Method 2: Switch boot_vga (Recommended Method)
-This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is a less extreme method that may work better or have fewer side effects for some than Method 1. However, further testing is required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin seem to work with this method in my testing.
-```
-all-ways-egpu set-boot-vga egpu
-```
-
-additional info can be found using the help flag.
-
-### Method 3: Set Compositor Variables (Desktop Specific)
-This method sets the variables specifically used by the compositors: mutter (GNOME), KWin (KDE Plasma), gamescope-session (Bazzite-Deck and ChimeraOS), wlroots (Sway and others) and Hyprland. This hints to these desktops to use the eGPU as primary. This only works on those compositors specifically and may not always force applications to use the eGPU. Method 2 and Method 3 should be both used together for the best experience on the above desktops.
-```
-all-ways-egpu set-compositor-primary egpu
-```
-
-## Extra Steps:
+<details>
+<summary>Extra Steps (Only needed for Method 1 Legacy/Alternate Method):</summary>
 
 If the option "Attempt to re-enable these iGPU/initially disabled devices after boot" is chosen in the setup, after logging in, the script will prompt for your password each time to attempt to re-enable the iGPU (if not already done).
 
@@ -96,6 +83,23 @@ Identity=unix-group:group-name
 Action=org.freedesktop.systemd1.manage-units
 ResultActive=yes
 ```
+</details>
+</details>
+
+### Method 2: Switch boot_vga (Recommended Method)
+This method simply switches the boot\_vga indicator flag that many Wayland compositors use in choosing the primary GPU. This is the current recommended method for any Wayland desktop. However, individual testing may be required to ensure it will work with any particular Wayland compositor. Currently, GNOME's mutter, Sway's wl\_roots and KDE Plasma's KWin work with this method in my testing.
+```
+all-ways-egpu set-boot-vga egpu
+```
+
+additional info can be found using the help flag.
+
+### Method 3: Set Compositor Variables (Desktop Specific)
+This method sets the variables specifically used by the compositors: mutter (GNOME), KWin (KDE Plasma), gamescope-session (Bazzite-Deck and ChimeraOS), and wlroots (Sway and Hyprland). This hints to these desktops to use the eGPU as primary. This only works on those compositors specifically and may not always force applications to use the eGPU. Method 2 and Method 3 may be both used together for the best experience on the above desktops.
+```
+all-ways-egpu set-compositor-primary egpu
+```
+
 ## Entry point:
 
 If custom commands need to be run before or after the all-ways-egpu script at boot, these can be added to `/usr/bin/all-ways-egpu-entry.sh` (Or `/home/$USER/bin/all-ways-egpu-entry.sh` if installed as a User Installation)
@@ -126,5 +130,7 @@ If custom commands need to be run before or after the all-ways-egpu script at bo
 ```
 cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/download/all-ways-egpu.zip  -o all-ways-egpu.zip; unzip all-ways-egpu.zip; cd all-ways-egpu-main; chmod +x install.sh; sudo ./install.sh user-install; cd ../; rm -rf all-ways-egpu.zip all-ways-egpu-main
 ```
+
+- If the script fails to automatically enable the eGPU at startup, but succeeds when you run it manually, try adding the following kernel parameter: `thunderbolt.host_reset=0`
 
 - PR's for any other issues welcome :)
