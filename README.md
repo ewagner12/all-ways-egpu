@@ -134,4 +134,6 @@ cd ~; curl -qLs  https://github.com/ewagner12/all-ways-egpu/releases/latest/down
 
 - If the script fails to automatically enable the eGPU at startup, but succeeds when you run it manually, try adding the following kernel parameter: `thunderbolt.host_reset=0`
 
+- If Bazzite Game Mode is showing a black screen using an AMD/Intel eGPU without a display connected to the eGPU, run the additional command [here](https://github.com/ewagner12/all-ways-egpu/issues/43#issuecomment-2869181418)
+
 - PR's for any other issues welcome :)
