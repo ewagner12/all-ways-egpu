@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.55.0
+VERSION=0.55.1
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -439,6 +439,7 @@ setCompVars() {
 		isDisplayConnected "$IDS_FILE"
 		DISP_EGPU="$DISP_FOUND"
 	else
+		DISP_EGPU=0
 		subRemoveEnv
 		echo "No card set as primary"
 	fi
@@ -999,10 +1000,11 @@ case $1 in
 				# If setting compositor variables at boot add delay and display connected check
 				sleep "$BOOT_DELAY"
 				setCompVars "$EGPU_IDS"
-				if [ "$EGPU_DETECT" -eq 1 ] && [ "$DISP_EGPU" -ne 1 ]; then
+				if [ "$DISP_EGPU" -ne 1 ]; then
 					echo "Not setting compositor variables to eGPU as no eGPU attached displays were detected. To remove this check, run: all-ways-egpu disable-display-check"
-					subRemoveEnv
-					echo "No card set as primary"
+					MAX_RETRY=1
+					echo "Trying to set iGPU as primary..."
+					setCompVars "$PCI_DEV"
 				fi
 				;;
 		esac
