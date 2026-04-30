@@ -998,7 +998,8 @@ case $1 in
 				;;
 			*)
 				# If setting compositor variables at boot add delay and display connected check
-				sleep "$BOOT_DELAY"
+				subRemoveEnv
+				sleep $(("$BOOT_DELAY"-1))
 				setCompVars "$EGPU_IDS"
 				if [ "$DISP_EGPU" -ne 1 ]; then
 					echo "Not setting compositor variables to eGPU as no eGPU attached displays were detected. To remove this check, run: all-ways-egpu disable-display-check"
