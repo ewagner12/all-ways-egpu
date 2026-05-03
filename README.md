@@ -38,6 +38,7 @@ If you want to skip the menu system, the following terminal commands can also be
 ```
 all-ways-egpu setup
 ```
+Note: The GPU(s) identified during the first setup step will be the eGPU used as primary when connected. If more than one eGPU is selected the first one available will be used. The GPU(s) identified during the second setup step "Identify the current iGPU/dGPUs to be used for Method 1:" will be used as primary when the eGPU is not connected.
 
 <details>
 <summary>Method 1: Force iGPU off (Legacy/Alternate Method)</summary>
