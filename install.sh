@@ -49,7 +49,7 @@ userInstall() {
 			sed -i 's,=all-ways-egpu,='"$HD"'\/bin\/all-ways-egpu,' systemd/*.service
 			sed -i 's,="all-ways-egpu",="'"$HD"'\/bin\/all-ways-egpu\",' OpenRC/*-openrc
 			sed -i 's,\(^all-ways-egpu\),'"$HD"'\/bin\/all-ways-egpu,' all-ways-egpu-entry.sh
-			sed -i 's,\(^all-ways-egpu\),'"$HD"'\/bin\/all-ways-egpu,' all-ways-egpu.desktop
+			sed -i 's,=all-ways-egpu,='"$HD"'\/bin\/all-ways-egpu,' all-ways-egpu.desktop
 			cp all-ways-egpu "$HD"/bin
 			if [ ! -e "$HD"/bin/all-ways-egpu-entry.sh ]; then
 				cp all-ways-egpu-entry.sh "$HD"/bin
