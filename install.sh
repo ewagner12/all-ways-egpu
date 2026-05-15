@@ -40,13 +40,16 @@ install() {
 userInstall() {
 	set -- "${DESTDIR}"/home/*
 	for HD in "$@"; do
-		mkdir -p "$HD"/bin
+		if [ -d "$HD" ]; then
+			mkdir -p "$HD"/bin
+		fi
 		if [ -x "$HD"/bin ]; then
 			echo "Installing to user directory: $HD/bin"
 			# Init services hard coded to first user path that is executable
 			sed -i 's,=all-ways-egpu,='"$HD"'\/bin\/all-ways-egpu,' systemd/*.service
 			sed -i 's,="all-ways-egpu",="'"$HD"'\/bin\/all-ways-egpu\",' OpenRC/*-openrc
 			sed -i 's,\(^all-ways-egpu\),'"$HD"'\/bin\/all-ways-egpu,' all-ways-egpu-entry.sh
+			sed -i 's,\(^all-ways-egpu\),'"$HD"'\/bin\/all-ways-egpu,' all-ways-egpu.desktop
 			cp all-ways-egpu "$HD"/bin
 			if [ ! -e "$HD"/bin/all-ways-egpu-entry.sh ]; then
 				cp all-ways-egpu-entry.sh "$HD"/bin
@@ -58,6 +61,13 @@ userInstall() {
 			fi
 			if [ -e "$HD"/.bashrc ]; then
 				if ! cat "$HD"/.bashrc | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc; fi
+			else
+				echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc
+			fi
+			if [ -e "$HD"/.profile ]; then
+				if ! cat "$HD"/.profile | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.profile; fi
+			else
+				echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.profile
 			fi
 		else
 			echo "Skipping directory ""$HD"" that is not executable"
