@@ -85,6 +85,11 @@ Identity=unix-group:group-name
 Action=org.freedesktop.systemd1.manage-units
 ResultActive=yes
 ```
+
+Additional Notes:
+- Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail when using Method 1 due to the virtual console switching. It is currently recommended to disable this.
+- If the option "Attempt to re-enable these iGPU/initially disabled devices after boot" is chosen in the setup. The iGPU is activated after logging in. Thus, logging out will make the iGPU primary again until the computer is restarted.
+- If you have an nvidia card, you must choose "n" to the option "Attempt to re-enable these iGPU/initially disabled devices after boot". Otherwise, switching might result in a black screen. Once this option is disabled, switching should work normally.
 </details>
 </details>
 
@@ -110,17 +115,11 @@ If custom commands need to be run before or after the all-ways-egpu script at bo
 
 - If the internal display is still off after logging in with eGPU attached, try switching to a different TTY with for example: CTRL-ALT-F1 and back.
 
-- If the option "Attempt to re-enable these iGPU/initially disabled devices after boot" is chosen in the setup. The iGPU is activated after logging in. Thus, logging out will make the iGPU primary again until the computer is restarted.
-
 - This script is still in the testing phase for a variety of desktops and distros. If you have issues be sure to include your specific desktop configuration.
 
 - Note: the OpenRC calls currently assume the display manager is started with an init script called "display-manager". On some distros, xdm or a script with some other name is used. In these cases, I recommend linking that script with the following command: `ln -s /etc/init.d/xdm /etc/init.d/display-manager`. Also recommended to add the linked service to the default runlevel with the command: `rc-update add display-manager default`
 
-- Applications that work on the console like Ubuntu's Plymouth (as invoked by the `splash` kernel parameter) may fail when using Method 1 due to the virtual console switching. It is currently recommended to disable this.
-
-- If you have an nvidia card, you must choose "n" to the option "Attempt to re-enable these iGPU/initially disabled devices after boot". Otherwise, switching might result in a black screen. Once this option is disabled, switching should work normally.
-
-- On Steam Deck/SteamOS the script requires root (sudo) privileges, but does not require setting the file system to read-write if installed in the Steam Deck/User Installation mode.
+- Note: On Steam Deck/SteamOS the script requires root (sudo) privileges, but does not require setting the file system to read-write if installed in the Steam Deck/User Installation mode. To add a shortcut to the script for Steam Game Mode see the steps in the wiki [here](https://github.com/ewagner12/all-ways-egpu/wiki/Add-as-a-Steam-Shortcut)
 
 - Restarting the display manager when using GNOME Wayland with fractional scaling may lead to a laggy desktop. In this case a manual logout and login is recommended to avoid this.
 
