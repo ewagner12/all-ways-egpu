@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.55.2
+VERSION=0.55.3
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -588,6 +588,7 @@ uninstall() {
 	rm -f /home/*/.local/share/applications/all-ways-egpu.desktop
 	rm -rf $CONFDIR
 	rm -f $UDEV_RULE_PATH
+	rm -f /etc/profile.d/all-ways-egpu-user-dir.sh
 	subRemoveEnv
 }
 

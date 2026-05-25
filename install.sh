@@ -64,10 +64,10 @@ userInstall() {
 			else
 				echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.bashrc
 			fi
-			if [ -e "$HD"/.profile ]; then
-				if ! cat "$HD"/.profile | grep -q PATH='.*$HOME/bin'; then echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.profile; fi
+			if [ -e "${DESTDIR}"/etc/profile.d/all-ways-egpu-user-dir.sh ]; then
+				if ! cat "${DESTDIR}"/etc/profile.d/all-ways-egpu-user-dir.sh | grep -q PATH='.*'"$HD"/bin; then echo 'export PATH="'"$HD"'/bin:$PATH"' >> "${DESTDIR}"/etc/profile.d/all-ways-egpu-user-dir.sh; fi
 			else
-				echo 'export PATH="$HOME/bin:$PATH"' >> "$HD"/.profile
+				echo echo 'export PATH="'"$HD"'/bin:$PATH"' >> "${DESTDIR}"/etc/profile.d/all-ways-egpu-user-dir.sh
 			fi
 		else
 			echo "Skipping directory ""$HD"" that is not executable"
