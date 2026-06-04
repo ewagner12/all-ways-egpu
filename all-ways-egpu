@@ -184,8 +184,8 @@ removeIDs() {
 	if ! checkSetup "$IDS_FILE"; then return; fi
 
 	if [ "$SERV_MAN" = "systemd" ]; then
-		START_CMD="systemctl start display-manager.service"
-		STOP_CMD="systemctl stop display-manager.service"
+		START_CMD="systemctl start display-manager.service user@1000"
+		STOP_CMD="systemctl stop display-manager.service user@1000"
 		ACT_CMD="systemctl status display-manager"
 		SYSD_VER=$(systemctl --version | grep systemd | awk '{print $2}')
 	else
@@ -798,7 +798,7 @@ menu() {
 				;;
 			0)
 				if [ "$SERV_MAN" = "systemd" ]; then
-					systemctl restart display-manager.service
+					systemctl restart display-manager.service user@1000
 				else
 					if [ "$SERV_MAN" = "openrc" ]; then
 						rc-service display-manager restart
