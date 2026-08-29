@@ -306,11 +306,11 @@ setBootVGA() {
 				set -- $(find /sys/bus/pci/devices/"$CARD"/ -maxdepth 3 -name "boot_*")
 				for BOOT_VGA_PATH in "$@"; do
 					if grep -q "$CARD" < "$IDS_FILE"; then
-						echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
+						echo "$BOOT_VGA_PATH"  | tee -a "$CONFDIR"/bind-paths
 						mount -n --bind -o ro "$USER_IDS_DIR"/1  "$BOOT_VGA_PATH"
 					else
 						if grep -q "1" < "${BOOT_VGA_PATH}"; then
-							echo "$BOOT_VGA_PATH"  | tee -a "$USER_IDS_DIR"/bind-paths
+							echo "$BOOT_VGA_PATH"  | tee -a "$CONFDIR"/bind-paths
 							mount -n --bind -o ro "$USER_IDS_DIR"/0 "$BOOT_VGA_PATH"
 						fi
 					fi
@@ -333,27 +333,15 @@ setBootVGA() {
 }
 
 removeBootVGA() {
-	if [ -e /usr/share/all-ways-egpu/bind-paths ]; then
-		echo "Existing bind mounts recorded. Removing..."
-		subRemoveVGA /usr/share/all-ways-egpu
+	if [ -e "$CONFDIR"/bind-paths ]; then
+		echo "Existing bind mounts recorded at /etc/all-ways-egpu. Removing..."
+		BIND_PATHS="$CONFDIR"/bind-paths
+		while read -r LINE; do
+			umount -n "$LINE"
+		done < "$BIND_PATHS"
+		rm -f "$BIND_PATHS"
 		echo "Bind mounts removed successfully. Restart Display Manager for changes to take effect."
 	fi
-	for BP in /home/*/.config; do
-		if [ -e "$BP"/all-ways-egpu/bind-paths ]; then
-			printf "Removing bind mounts recorded at %s...\n" "$BP/all-ways-egpu/bind-paths"
-			subRemoveVGA "$BP"/all-ways-egpu
-			echo "Bind mounts removed successfully. Restart Display Manager for changes to take effect."
-		fi
-	done
-#	echo "Error: No bind mounts recorded. Use "all-ways-egpu set-boot-vga egpu" to set mounts or reboot to reset mounts"
-}
-
-subRemoveVGA() {
-	BIND_PATHS="${1}"/bind-paths
-	while read -r LINE; do
-		umount -n "$LINE"
-	done < "$BIND_PATHS"
-	rm -f "$BIND_PATHS"
 }
 
 # Used for Method 3
