@@ -21,6 +21,8 @@ initServices() {
 			cp OpenRC/all-ways-egpu-set-compositor-openrc "${DESTDIR}"${CONFDIR}
 		fi
 	fi
+	cp gamescope-session-egpu "${DESTDIR}"${CONFDIR}
+	chmod +x "${DESTDIR}"${CONFDIR}/gamescope-session-egpu
 }
 
 install() {

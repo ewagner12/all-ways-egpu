@@ -127,8 +127,14 @@ setupAutostart() {
 		fi
 		if [ "$EN_RES_3" = "y" ]; then
 			systemctl enable all-ways-egpu-set-compositor.service
+			if [ -e "/usr/lib/steamos/gamescope-session" ] && [ -e "/usr/lib/systemd/user/gamescope-session.service" ]; then
+				printf "[Service]\nExecStart=\nExecStart=/etc/all-ways-egpu/gamescope-session-egpu\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+			fi
 		else
 			systemctl disable all-ways-egpu-set-compositor.service
+			if [ -e "/home/deck/.config/systemd/user/gamescope-session.service.d/override.conf" ]; then
+				rm /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+			fi
 		fi
 
 	else
@@ -552,6 +558,7 @@ uninstall() {
 		rm -f ${SYSDIR}/all-ways-egpu-boot-vga.service
 		rm -f ${SYSDIR}/all-ways-egpu-shutdown.service
 		rm -f ${SYSDIR}/all-ways-egpu-set-compositor.service
+		rm -f /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
 	else
 		if [ "$SERV_MAN" = "openrc" ]; then
 			if [ -e /etc/init.d ]; then
