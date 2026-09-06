@@ -128,6 +128,7 @@ setupAutostart() {
 		if [ "$EN_RES_3" = "y" ]; then
 			systemctl enable all-ways-egpu-set-compositor.service
 			if [ -e "/usr/lib/steamos/gamescope-session" ] && [ -e "/usr/lib/systemd/user/gamescope-session.service" ]; then
+				mkdir -p /home/deck/.config/systemd/user/gamescope-session.service.d/
 				printf "[Service]\nExecStart=\nExecStart=/etc/all-ways-egpu/gamescope-session-egpu\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
 			fi
 		else
