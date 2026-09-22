@@ -1,11 +1,12 @@
 #!/bin/bash
 
-BASE_SCRIPT="$(cat /usr/lib/steamos/gamescope-session)"
+BASE_SCRIPT=/usr/lib/steamos/gamescope-session
+EGPU_SCRIPT=/tmp/gamescope-session-egpu
 
-if [ $VULKAN_ADAPTER ]; then
-    BASE_SCRIPT+="
-        --prefer-vk-device $VULKAN_ADAPTER \\
-"
+if [ -n "$VULKAN_ADAPTER" ]; then
+    printf '%s\n%s\n' "$(<$BASE_SCRIPT)" "    --prefer-vk-device $VULKAN_ADAPTER \\" > "$EGPU_SCRIPT"
+else
+    cp "$BASE_SCRIPT" "$EGPU_SCRIPT"
 fi
 
-bash -c "$BASE_SCRIPT"
+source "$EGPU_SCRIPT"

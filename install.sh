@@ -21,8 +21,6 @@ initServices() {
 			cp OpenRC/all-ways-egpu-set-compositor-openrc "${DESTDIR}"${CONFDIR}
 		fi
 	fi
-	cp gamescope-session-egpu "${DESTDIR}"${CONFDIR}
-	chmod +x "${DESTDIR}"${CONFDIR}/gamescope-session-egpu
 }
 
 install() {
@@ -32,6 +30,8 @@ install() {
 	if [ ! -e "${DESTDIR}"${BINDIR}/all-ways-egpu-entry.sh ]; then
 		cp all-ways-egpu-entry.sh "${DESTDIR}"${BINDIR}
 	fi
+	cp gamescope-session-egpu "${DESTDIR}"${BINDIR}
+	chmod +x "${DESTDIR}"${BINDIR}/gamescope-session-egpu
 	chmod +x "${DESTDIR}"${BINDIR}/all-ways-egpu
 	chmod +x "${DESTDIR}"${BINDIR}/all-ways-egpu-entry.sh
 	mkdir -p "${DESTDIR}"${CONFDIR}
@@ -56,6 +56,8 @@ userInstall() {
 			if [ ! -e "$HD"/bin/all-ways-egpu-entry.sh ]; then
 				cp all-ways-egpu-entry.sh "$HD"/bin
 			fi
+			cp gamescope-session-egpu "$HD"/bin
+			chmod +x "$HD"/bin/gamescope-session-egpu
 			chmod +x "$HD"/bin/all-ways-egpu
 			chmod +x "$HD"/bin/all-ways-egpu-entry.sh
 			if [ -e "$HD"/.local/share/applications ]; then

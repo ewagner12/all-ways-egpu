@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=0.55.4
+VERSION=0.55.5
 BINDIR=/usr/bin
 USER_IDS_DIR=/usr/share/all-ways-egpu
 CONFDIR=/etc/all-ways-egpu
@@ -129,7 +129,16 @@ setupAutostart() {
 			systemctl enable all-ways-egpu-set-compositor.service
 			if [ -e "/usr/lib/steamos/gamescope-session" ] && [ -e "/usr/lib/systemd/user/gamescope-session.service" ]; then
 				mkdir -p /home/deck/.config/systemd/user/gamescope-session.service.d/
-				printf "[Service]\nExecStart=\nExecStart=/etc/all-ways-egpu/gamescope-session-egpu\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+				if [ -e "$BINDIR"/gamescope-session-egpu ]; then
+					printf "[Service]\nExecStart=\nExecStart=$BINDIR/gamescope-session-egpu\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+				fi
+				for HD in /home/*/bin; do
+					if [ -e "$HD"/gamescope-session-egpu ]; then
+						USER_GS="$HD"/gamescope-session-egpu
+						printf "[Service]\nExecStart=\nExecStart=$USER_GS\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+						break
+					fi
+				done
 			fi
 		else
 			systemctl disable all-ways-egpu-set-compositor.service
@@ -545,8 +554,10 @@ uninstall() {
 	removeBootVGA
 	rm -f ${BINDIR}/all-ways-egpu
 	rm -f ${BINDIR}/all-ways-egpu-entry.sh
+	rm -f ${BINDIR}/gamescope-session-egpu
 	rm -f /home/*/bin/all-ways-egpu
 	rm -f /home/*/bin/all-ways-egpu-entry.sh
+	rm -f /home/*/bin/gamescope-session-egpu
 	if [ "$SERV_MAN" = "systemd" ]; then
 		SYSDIR=/etc/systemd/system
 		systemctl disable all-ways-egpu.service
