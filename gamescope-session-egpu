@@ -2,8 +2,10 @@
 
 BASE_SCRIPT="$(cat /usr/lib/steamos/gamescope-session)"
 
-BASE_SCRIPT+="
+if [ $VULKAN_ADAPTER ]; then
+    BASE_SCRIPT+="
         --prefer-vk-device $VULKAN_ADAPTER \\
 "
+fi
 
 bash -c "$BASE_SCRIPT"
