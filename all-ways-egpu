@@ -129,13 +129,13 @@ setupAutostart() {
 			systemctl enable all-ways-egpu-set-compositor.service
 			if [ -e "/usr/lib/steamos/gamescope-session" ] && [ -e "/usr/lib/systemd/user/gamescope-session.service" ]; then
 				mkdir -p /home/deck/.config/systemd/user/gamescope-session.service.d/
-				if [ -e "$BINDIR"/gamescope-session-egpu ]; then
-					printf "[Service]\nExecStart=\nExecStart=$BINDIR/gamescope-session-egpu\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
-				fi
 				for HD in /home/*/bin; do
-					if [ -e "$HD"/gamescope-session-egpu ]; then
-						USER_GS="$HD"/gamescope-session-egpu
-						printf "[Service]\nExecStart=\nExecStart=$USER_GS\n" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
+					USER_GS="$HD"/gamescope-session-egpu
+					if [ -e "$BINDIR"/gamescope-session-egpu ]; then
+						cp "$BINDIR"/gamescope-session-egpu "$USER_GS"
+					fi
+					if [ -e "$USER_GS" ]; then
+						printf "[Service]\nExecStart=\nExecStart=%s\n" "$USER_GS" > /home/deck/.config/systemd/user/gamescope-session.service.d/override.conf
 						break
 					fi
 				done

@@ -92,8 +92,10 @@ case $1 in
 	all-ways-egpu uninstall
 		;;
 	*)
-		# check for write permissions and install in user directory if /usr is not writable
-		if [ -w /usr ]; then
+		# check for write permissions and install in user directory if /usr is not writable or distro is SteamOS
+		if grep -q "ID=steamos" < /etc/os-release; then
+			userInstall
+		elif [ -w /usr ]; then
 			install
 		else
 			userInstall
