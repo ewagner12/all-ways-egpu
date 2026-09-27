@@ -21,7 +21,7 @@ MAX_RETRY=5
 BOOT_DELAY=3
 
 setupConfig() {
-	if [ "${2}" -eq 1 ]; then
+	if grep -q "ID=steamos" < /etc/os-release || [ "${2}" -eq 1 ]; then
 		USER_IDS_DIR=/home/"$SUDO_USER"/.config/all-ways-egpu
 		PCI_DEV="$USER_IDS_DIR"/user-bus-ids
 		EGPU_IDS="$USER_IDS_DIR"/egpu-bus-ids
